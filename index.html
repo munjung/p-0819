@@ -56,6 +56,7 @@ const WOD = [
   { move:'wb',     label:'월볼샷',            weight:20,  reps:3,  dur:72, pw:0.045, gw:0.100, random:false },
   { move:'bmu',    label:'바 머슬업',         weight:0,   reps:3,  dur:78, pw:0.040, gw:0.100, random:true  },
   { move:'du',     label:'더블언더',          weight:0,   reps:3,  dur:34, pw:0.050, gw:0.110, random:false },
+  { move:'rmu',    label:'링 머슬업',          weight:0,   reps:3,  dur:74, pw:0.036, gw:0.095, random:true  },
   { move:'cj',     label:'클린&저크',         weight:135, wStep:20, wMax:175, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
   { move:'alt',    label:'스내치 155lb + 머슬업', weight:155, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
 ];
@@ -150,7 +151,7 @@ function resultDur(){
   const ok = judgment && judgment.pts>0;
   if(curMove==='du') return ok ? 12 : 30;
   if(curMove==='wb') return ok ? 26 : 32;
-  if(curMove==='bmu') return ok ? 74 : 42;   // 할로우~서포트 풀 시퀀스
+  if(curMove==='bmu'||curMove==='rmu') return ok ? 74 : 42;   // 할로우~서포트 풀 시퀀스
   return ok ? 56 : 42;
 }
 function pickMove(){
@@ -402,6 +403,15 @@ function drawShoe(sx,sy){
 }
 
 // ---------- 풀업 리그 ----------
+// 링 스테이션: 천장 스트랩 + 나무 링 2개
+function drawRingsStation(rx, ringY){
+  px(rx-2,46,2,ringY-46,'#dcd9d0');
+  px(rx+10,46,2,ringY-46,'#dcd9d0');
+  x.strokeStyle='#b8945a'; x.lineWidth=2;
+  x.beginPath(); x.arc(rx-1,ringY+4,4,0,Math.PI*2); x.stroke();
+  x.beginPath(); x.arc(rx+11,ringY+4,4,0,Math.PI*2); x.stroke();
+}
+
 function drawRig(rx, barY){
   px(rx-52,barY,104,4,'#3a6ad4');            // 파랑 바
   px(rx-52,barY,104,1,'#6a94e8');
@@ -766,8 +776,9 @@ function drawScene(){
       }
     }
   }
-  else if(curMove==='bmu'){
-    drawRig(AX+5, RIG_Y);
+  else if(curMove==='bmu'||curMove==='rmu'){
+    if(curMove==='rmu') drawRingsStation(AX, RIG_Y);
+    else drawRig(AX+5, RIG_Y);
     if(phase==='ready' || phase==='run'){
       // 대기 중 스윙: 할로우 ↔ 아치 왕복 (천천히)
       const sw = Math.sin(t*0.045);
