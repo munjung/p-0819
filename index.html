@@ -51,7 +51,7 @@ const FLOOR = 360;
 // ---------- WOD 정의 ----------
 // pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
 const MOVES = [
-  // ponytail: 테스트용 랩 수 (정식: 8/6/8/16/6/10)
+  // 기본 3랩 — 랩 수는 빌더에서 종목별로 직접 조절
   { move:'snatch', label:'스내치',           weight:95,  wStep:20, wMax:135, reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
   { move:'wb',     label:'월볼샷',            weight:20,  reps:3,  dur:72, pw:0.045, gw:0.100, random:false },
   { move:'bmu',    label:'바 머슬업',         weight:0,   reps:3,  dur:78, pw:0.040, gw:0.100, random:true  },
