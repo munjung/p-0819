@@ -56,7 +56,7 @@ const WOD = [
   { move:'wb',     label:'월볼샷',            weight:20,  reps:3,  dur:72, pw:0.045, gw:0.100, random:false },
   { move:'bmu',    label:'바 머슬업',         weight:0,   reps:3,  dur:78, pw:0.040, gw:0.100, random:true  },
   { move:'du',     label:'더블언더',          weight:0,   reps:3,  dur:34, pw:0.050, gw:0.110, random:false },
-  { move:'cj',     label:'클린&저크',         weight:115, wStep:10, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
+  { move:'cj',     label:'클린&저크',         weight:135, wStep:20, wMax:175, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
   { move:'alt',    label:'스내치 155lb + 머슬업', weight:155, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
 ];
 
@@ -83,6 +83,10 @@ const COACH = [
   '팔로 들지 마, 다리로!', '시선은 정면!', '풀 익스텐션!',
   '바 몸에 가깝게!', '좋아, 그 템포!', '무릎 밖으로!',
   '힙 드라이브!', '집중해 집중!', '마지막처럼 해!',
+];
+const COACH_WB = [
+  '더 깊게 앉아야죠~!', '더 깊게 앉아야죠~!',   // 월볼 단골 멘트 (가중치 2배)
+  '타겟 정중앙 노려!', '리듬 타, 리듬!', '호흡 잊지 마!',
 ];
 function bestScore(){ try{ return +(localStorage.getItem('wodBest')||0); }catch(_){ return 0; } }
 
@@ -168,10 +172,13 @@ function setZone(){
 }
 function startRep(){
   phase='ready'; frame=0; judgment=null; cjStage=0; pickMove();
-  if(Math.random()<0.6) coachMsg = {    // 코치 한마디 (랜덤 좌/우 말풍선)
-    text: COACH[Math.random()*COACH.length|0],
-    side: Math.random()<0.5?'L':'R', life: 85,
-  };
+  if(Math.random()<0.6){                // 코치 한마디 (랜덤 좌/우 말풍선)
+    const pool = curMove==='wb' ? COACH_WB : COACH;
+    coachMsg = {
+      text: pool[Math.random()*pool.length|0],
+      side: Math.random()<0.5?'L':'R', life: 85,
+    };
+  }
   // 속도: 랩 진행 + 랜덤 편차
   repDur = Math.max(28, WOD[roundIdx].dur - repIdx*1.5 + (Math.random()*10-5));
   setZone();
