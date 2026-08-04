@@ -67,6 +67,9 @@ let wMode = 'rx';          // 'rx' | 'scaled' (스케일드: 바벨 -20lb, 월�
 let mode = 'fortime';      // 'fortime' | 'amrap'
 let amrapLeft = 0;         // AMRAP 남은 프레임
 let wodTime = 0;           // FOR TIME 경과 프레임
+let timeCap = 0;           // FOR TIME 제한 (프레임)
+let timeCapped = false;    // 타임캡 걸려서 종료됐는지
+let timeBonus = 0;         // 빨리 끝낸 보너스 점수
 function fmtTime(fr){
   const s = fr/60|0;
   return String(s/60|0).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
@@ -158,6 +161,15 @@ function launchWOD(){
   WOD = pickList.map(i=>({ ...MOVES[i], reps: customReps(i) }));
   startWOD();
   if(mode==='amrap') amrapLeft = 60*60;   // 60초
+  else {
+    // FOR TIME 타임캡: 랩당 5초 + 라운드당 3초
+    const totalReps = WOD.reduce((a,m)=>a+m.reps,0);
+    timeCap = (totalReps*5 + WOD.length*3) * 60;
+  }
+  timeCapped = false; timeBonus = 0;
+}
+function prizeOK(){   // 신발은 RX'D + 통과 + 타임캡 안 걸려야
+  return gradeInfo().passed && wMode==='rx' && !timeCapped;
 }
 function rename(){
   const n = prompt('선수 이름을 입력해줘!', playerName);
@@ -247,14 +259,14 @@ function buildShareCard(){
   text(''+score, 135, 98, 26, '#f0ead8');
   text(gi.grade, 135, 122, 11, '#ff9ec4');
   text('PERFECT '+perfects+' · GOOD '+goods+' · NO REP '+misses, 135, 144, 9, '#8be0d8');
-  text(mode==='amrap'
+  text((wMode==='scaled'?'SCALED · ':"RX'D · ")+(mode==='amrap'
     ? 'AMRAP 60초 · 총 '+(perfects+goods)+'렙'
-    : 'MAX COMBO '+maxCombo+' · 총 리프팅 '+tonnage+'lb', 135, 160, 9, '#8be0d8');
+    : 'TIME '+fmtTime(wodTime)+' · 총 '+tonnage+'lb'), 135, 160, 9, '#8be0d8');
   if(doneBadges.length){
     const sx0 = 135 - doneBadges.length*26;
     doneBadges.forEach((b,k)=>drawBadge(sx0+k*52+17, 176, b.name, false));
   }
-  if(gi.passed){
+  if(prizeOK()){
     drawShoe(90, 226);
     text('★ TYR CXT-3 획득! ★', 135, 288, 11, '#ffd23f');
   }
@@ -326,7 +338,8 @@ function setZone(){
   const r = WOD[roundIdx];
   // 존 위치: random 라운드는 랩마다 이동 (타이밍 암기 방지)
   const zc = r.random ? 0.55 + Math.random()*0.3 : 0.845;
-  zone = { pLo:zc-r.pw, pHi:zc+r.pw, gLo:zc-r.gw, gHi:zc+r.gw };
+  const m = wMode==='scaled' ? 1.3 : 1;   // 스케일드: 판정 존 30% 넓게
+  zone = { pLo:zc-r.pw*m, pHi:zc+r.pw*m, gLo:zc-r.gw*m, gHi:zc+r.gw*m };
 }
 function startRep(){
   phase='ready'; frame=0; judgment=null; cjStage=0; pickMove();
@@ -337,8 +350,9 @@ function startRep(){
       side: Math.random()<0.5?'L':'R', life: 85,
     };
   }
-  // 속도: 랩 진행 + 랜덤 편차
+  // 속도: 랩 진행 + 랜덤 편차 (+스케일드는 15% 느리게)
   repDur = Math.max(28, WOD[roundIdx].dur - repIdx*1.5 + (Math.random()*10-5));
+  if(wMode==='scaled') repDur *= 1.15;
   setZone();
 }
 function judge(p){
@@ -379,6 +393,10 @@ function judge(p){
 }
 function finishWOD(){
   state='done'; t=0; sfx.clear();
+  if(mode==='fortime' && !timeCapped){    // 빨리 끝낸 만큼 보너스 (남은 초 × 5점)
+    timeBonus = Math.ceil((timeCap-wodTime)/60)*5;
+    score += timeBonus;
+  }
   isNewBest = score > bestScore();
   if(isNewBest){ try{ localStorage.setItem('wodBest', score); }catch(_){} }
   // 업적 평가 + 저장
@@ -1179,6 +1197,7 @@ function loop(){
     text(r.label+(r.weight?' '+moveWeight(r)+'lb'+(r.wStep?'+':''):''), W/2, 194, 15, '#ffd23f');
     text('× '+r.reps, W/2, 214, 12, '#ffd23f');
     if(r.random) text('!! 판정 존이 랩마다 움직임 !!', W/2, 232, 9, '#ff9ec4');
+    if(mode==='fortime') text('타임캡 '+fmtTime(timeCap), W/2, 248, 9, '#7a7292');
     const cnt = 3 - (frame/30|0);
     if(frame%30===1 && cnt>0) sfx.count();
     drawTimer('DN', Math.max(0,cnt));          // 3-2-1 카운트다운
@@ -1196,7 +1215,12 @@ function loop(){
       else drawTimer('DN', Math.ceil(amrapLeft/60));
     } else {
       wodTime++;
-      drawTimer('UP', wodTime/60|0);
+      if(wodTime>=timeCap){ timeCapped=true; finishWOD(); }
+      else {
+        drawTimer('UP', wodTime/60|0);
+        const remain = (timeCap-wodTime)/60|0;
+        if(remain<=10 && (t>>4)&1) text('CAP까지 '+remain+'초!', W/2, 56, 9, '#ff5a5a');
+      }
     }
 
     if(phase==='ready'){
@@ -1254,11 +1278,11 @@ function loop(){
     text('PERFECT '+perfects+' · GOOD '+goods+' · NO REP '+misses, W/2, 130, 9, '#8be0d8');
     text(mode==='amrap'
       ? 'AMRAP 60초 · 총 '+(perfects+goods)+'렙'
-      : 'TIME '+fmtTime(wodTime)+' · COMBO '+maxCombo+' · '+tonnage+'lb', W/2, 144, 9, '#8be0d8');
+      : 'TIME '+fmtTime(wodTime)+' · 보너스+'+timeBonus+' · '+tonnage+'lb', W/2, 144, 9, '#8be0d8');
     text(gi.grade, W/2, 162, 12, '#ff9ec4');
     text('생일 축하해!', W/2, 178, 14, '#ffd23f');
 
-    if(gi.passed){
+    if(prizeOK()){
       // 통과: 상품 TYR CXT-3
       drawShoe(90, 188);
       for(let i=0;i<6;i++){                      // 반짝이
@@ -1269,9 +1293,12 @@ function loop(){
       }
       text('★ 상품: TYR CXT-3 획득! ★', W/2, 242, 11, '#ffd23f');
     } else {
-      // 미달: 상품 게이트
-      text('목표 미달... 신발은 아직!', W/2, 206, 13, '#ff5a5a');
-      text('퍼펙트 비율 올려서 재도전!', W/2, 226, 10, '#8be0d8');
+      // 상품 게이트: 사유별 메시지
+      const why = timeCapped ? 'TIME CAP! 너무 늦었어...'
+        : !gi.passed ? '목표 미달... 신발은 아직!'
+        : "스케일드 클리어! 신발은 RX'D로!";
+      text(why, W/2, 206, 13, '#ff5a5a');
+      text('재도전 가자!', W/2, 226, 10, '#8be0d8');
     }
     // 업적 뱃지
     if(doneBadges.length){
