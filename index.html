@@ -42,7 +42,7 @@
 
 <script>
 const c = document.getElementById('c');
-const x = c.getContext('2d');
+let x = c.getContext('2d');   // 공유 카드 렌더링 시 임시 교체됨
 x.imageSmoothingEnabled = false;
 
 const W = 270, H = 480;
@@ -62,6 +62,27 @@ const MOVES = [
 ];
 let WOD = MOVES.slice();   // 빌더에서 고른 라운드 구성 (기본: 풀코스)
 let buildSel = [];         // 빌더 선택 순서 (MOVES 인덱스)
+let repsOverride = {};     // 빌더 랩 수 커스텀 {MOVES idx: reps}
+let wMode = 'rx';          // 'rx' | 'scaled' (스케일드: 바벨 -20lb, 월볼 -6lb)
+let mode = 'fortime';      // 'fortime' | 'amrap'
+let amrapLeft = 0;         // AMRAP 남은 프레임
+let wodTime = 0;           // FOR TIME 경과 프레임
+function fmtTime(fr){
+  const s = fr/60|0;
+  return String(s/60|0).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+let playerName = '배주열';
+try{ playerName = localStorage.getItem('wodName') || '배주열'; }catch(_){}
+
+// 업적 뱃지
+const BADGES = [
+  { id:'allperfect', name:'올 퍼펙트',  test:s=>s.total>0 && s.misses===0 && s.goods===0 },
+  { id:'nomiss',     name:'노 미스',    test:s=>s.total>0 && s.misses===0 },
+  { id:'club500',    name:'500LB 클럽', test:s=>s.tonnage>=500 },
+  { id:'combo10',    name:'10 콤보',    test:s=>s.maxCombo>=10 },
+  { id:'amrap30',    name:'AMRAP 30렙', test:s=>s.amrap && (s.perfects+s.goods)>=30 },
+];
+let doneBadges = [], newBadgeIds = [];
 
 let state = 'title';   // title | intro | play | done
 let roundIdx = 0, repIdx = 0;
@@ -124,39 +145,134 @@ function toggleMute(){ muted=!muted; muteEl.textContent = muted?'♪ OFF':'♪ O
 muteEl.addEventListener('pointerdown', e=>{ e.preventDefault(); audioInit(); toggleMute(); });
 
 // ---------- 입력 ----------
+function canvasPos(e){
+  const r=c.getBoundingClientRect();
+  return { mx:(e.clientX-r.left)*W/r.width, my:(e.clientY-r.top)*H/r.height };
+}
+function customReps(i){ return repsOverride[i] || MOVES[i].reps; }
 function launchWOD(){
-  WOD = buildSel.length ? buildSel.map(i=>MOVES[i]) : MOVES.slice();
+  const pickList = buildSel.length ? buildSel : MOVES.map((_,i)=>i);
+  WOD = pickList.map(i=>({ ...MOVES[i], reps: customReps(i) }));
   startWOD();
+  if(mode==='amrap') amrapLeft = 60*60;   // 60초
+}
+function rename(){
+  const n = prompt('선수 이름을 입력해줘!', playerName);
+  if(n && n.trim()){
+    playerName = n.trim().slice(0,10);
+    try{ localStorage.setItem('wodName', playerName); }catch(_){}
+  }
 }
 function buildTap(e){
-  const r=c.getBoundingClientRect();
-  const mx=(e.clientX-r.left)*W/r.width, my=(e.clientY-r.top)*H/r.height;
-  const rowH=34, top=96;
+  const {mx,my} = canvasPos(e);
+  // 무게 / 모드 토글
+  if(my>=80&&my<=104){
+    if(mx>=22&&mx<70)        { wMode='scaled'; sfx.count(); }
+    else if(mx>=70&&mx<=120) { wMode='rx';     sfx.count(); }
+    else if(mx>=150&&mx<206) { mode='fortime'; sfx.count(); }
+    else if(mx>=206&&mx<=248){ mode='amrap';   sfx.count(); }
+    return;
+  }
+  const rowH=32, top=112;
   const i=Math.floor((my-top)/rowH);
   if(mx>=22&&mx<=248&&my>=top&&i>=0&&i<MOVES.length&&my<top+MOVES.length*rowH){
     const idx=buildSel.indexOf(i);
-    if(idx>=0) buildSel.splice(idx,1); else buildSel.push(i);
+    if(idx>=0){
+      // 선택된 행: 랩 수 스테퍼 우선 처리
+      if(mx>=148&&mx<170){ repsOverride[i]=Math.max(1, customReps(i)-1); sfx.count(); return; }
+      if(mx>=190&&mx<212){ repsOverride[i]=Math.min(15, customReps(i)+1); sfx.count(); return; }
+      buildSel.splice(idx,1);
+    } else buildSel.push(i);
     sfx.count();
     return;
   }
-  if(my>=350&&my<=388){
-    if(mx>=20&&mx<=122){ buildSel=[]; sfx.go(); launchWOD(); }         // 풀코스
-    else if(mx>=148&&mx<=250&&buildSel.length){ sfx.go(); launchWOD(); } // 내가 짠 WOD
+  if(my>=352&&my<=390){
+    if(mx>=20&&mx<=122){ buildSel=[]; sfx.go(); launchWOD(); }            // 풀코스
+    else if(mx>=148&&mx<=250&&buildSel.length){ sfx.go(); launchWOD(); }  // 내가 짠 WOD
   }
 }
 function action(e){
   audioInit();
-  if(state==='title'){ state='build'; buildSel=[]; t=0; return; }
+  if(state==='title'){
+    if(e){
+      const {my} = canvasPos(e);
+      if(my>=222&&my<=246){ rename(); return; }   // 이름 변경
+    }
+    state='build'; t=0;
+    return;
+  }
   if(state==='build'){
     if(e) buildTap(e);
     else launchWOD();          // 키보드 SPACE
     return;
   }
-  if(state==='done'){ if(t>60){ state='title'; t=0; updateHUD(); } return; }
+  if(state==='done'){
+    if(e){
+      const {mx,my} = canvasPos(e);
+      if(mx>=60&&mx<=210&&my>=306&&my<=340){ doShare(); return; }
+    }
+    if(t>60){ state='title'; t=0; updateHUD(); }
+    return;
+  }
   if(state==='play'){
     if(phase==='run') judge(frame / repDur);
     else if(phase==='ready') judge(0);   // 부정출발도 NO REP
   }
+}
+// 업적 메달
+function drawBadge(bx, by, name, isNew){
+  px(bx+4,by,10,4,'#c94f5a');
+  x.fillStyle='#ffd23f'; x.beginPath(); x.arc(bx+9,by+11,8,0,Math.PI*2); x.fill();
+  x.fillStyle='#e8a820'; x.beginPath(); x.arc(bx+9,by+11,4,0,Math.PI*2); x.fill();
+  text(name, bx+9, by+31, 7, '#ffd23f');
+  if(isNew) text('NEW!', bx+9, by-3, 6, '#ff9ec4');
+}
+// 공유용 기록 카드 (540x720)
+function buildShareCard(){
+  const sc = document.createElement('canvas');
+  sc.width = 540; sc.height = 720;
+  const g = sc.getContext('2d'); g.imageSmoothingEnabled = false;
+  const old = x; x = g;
+  g.scale(2,2);   // 270x360 좌표계
+  const gi = gradeInfo();
+  px(0,0,270,360,'#14121c');
+  px(6,6,258,3,'#ffd23f'); px(6,351,258,3,'#ffd23f');
+  px(6,6,3,348,'#ffd23f'); px(261,6,3,348,'#ffd23f');
+  px(20,20,230,26,'#2a2340');
+  text('★ '+playerName+' BIRTHDAY WOD ★', 135, 38, 11, '#ffd23f');
+  text('SCORE', 135, 68, 11, '#8be0d8');
+  text(''+score, 135, 98, 26, '#f0ead8');
+  text(gi.grade, 135, 122, 11, '#ff9ec4');
+  text('PERFECT '+perfects+' · GOOD '+goods+' · NO REP '+misses, 135, 144, 9, '#8be0d8');
+  text(mode==='amrap'
+    ? 'AMRAP 60초 · 총 '+(perfects+goods)+'렙'
+    : 'MAX COMBO '+maxCombo+' · 총 리프팅 '+tonnage+'lb', 135, 160, 9, '#8be0d8');
+  if(doneBadges.length){
+    const sx0 = 135 - doneBadges.length*26;
+    doneBadges.forEach((b,k)=>drawBadge(sx0+k*52+17, 176, b.name, false));
+  }
+  if(gi.passed){
+    drawShoe(90, 226);
+    text('★ TYR CXT-3 획득! ★', 135, 288, 11, '#ffd23f');
+  }
+  text(new Date().toISOString().slice(0,10)+' · CROSSFIT ARCADE', 135, 336, 8, '#7a7292');
+  x = old;
+  return sc;
+}
+function doShare(){
+  const sc = buildShareCard();
+  sc.toBlob(async b=>{
+    if(!b) return;
+    try{
+      const f = new File([b], 'birthday-wod.png', {type:'image/png'});
+      if(navigator.canShare && navigator.canShare({files:[f]})){
+        await navigator.share({files:[f], title:'BIRTHDAY WOD', text:playerName+' — SCORE '+score});
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b); a.download = 'birthday-wod.png'; a.click();
+      }
+    }catch(_){}
+  });
 }
 addEventListener('keydown', e=>{
   if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); if(!e.repeat) action(); }
@@ -167,11 +283,22 @@ c.addEventListener('pointerdown', e=>{ e.preventDefault(); action(e); });
 document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ---------- 진행 ----------
-function curWeight(){    // 랩마다 점진적 증량 (wStep, wMax 상한)
+function curWeight(){    // 랩마다 점진적 증량 (wStep, wMax 상한) + SCALED 감량
   const r = WOD[roundIdx];
   if(!r.weight) return 0;
-  const w = r.weight + (r.wStep||0)*repIdx;
-  return r.wMax ? Math.min(r.wMax, w) : w;
+  let w = r.weight + (r.wStep||0)*repIdx;
+  if(r.wMax) w = Math.min(r.wMax, w);
+  if(wMode==='scaled') w -= (r.move==='wb' ? 6 : 20);
+  return w;
+}
+function gradeInfo(){
+  const total = perfects+goods+misses;
+  const rate = total ? perfects/total : 0;
+  return {
+    rate,
+    passed: rate>=0.55,
+    grade: rate>=0.85 ? "RX'D! 완벽한 애슬릿 ★" : rate>=0.55 ? '좋아! 폼 조금만 더!' : '스케일드... 재도전?',
+  };
 }
 function readyDur(){ return curMove==='du' ? 10 : (curMove==='wb' ? 24 : 32); }
 function resultDur(){
@@ -188,7 +315,7 @@ function pickMove(){
 function startWOD(){
   state='intro'; roundIdx=0; repIdx=0; frame=0; t=0;
   combo=0; maxCombo=0; score=0; perfects=0; goods=0; misses=0; tonnage=0;
-  roundMisses=0; coachMsg=null; isNewBest=false;
+  roundMisses=0; coachMsg=null; isNewBest=false; wodTime=0;
   particles=[]; popups=[];
   updateHUD();
 }
@@ -242,22 +369,33 @@ function judge(p){
   } else {
     phase='result'; frame=0;
   }
-  if(!res.pts && roundMisses>=3){      // NO REP 3회 → 라운드 실패
+  if(!res.pts && roundMisses>=3 && mode!=='amrap'){   // NO REP 3회 → 라운드 실패 (AMRAP 제외)
     state='failed'; frame=0; coachMsg=null;
   }
   updateHUD();
 }
+function finishWOD(){
+  state='done'; t=0; sfx.clear();
+  isNewBest = score > bestScore();
+  if(isNewBest){ try{ localStorage.setItem('wodBest', score); }catch(_){} }
+  // 업적 평가 + 저장
+  const stats = { perfects, goods, misses, total:perfects+goods+misses, tonnage, maxCombo, amrap:mode==='amrap' };
+  doneBadges = BADGES.filter(b=>b.test(stats));
+  let owned=[]; try{ owned=JSON.parse(localStorage.getItem('wodBadges')||'[]'); }catch(_){}
+  newBadgeIds = doneBadges.map(b=>b.id).filter(id=>!owned.includes(id));
+  try{ localStorage.setItem('wodBadges', JSON.stringify([...new Set(owned.concat(doneBadges.map(b=>b.id)))])); }catch(_){}
+}
 function nextRep(){
   repIdx++;
   if(repIdx >= WOD[roundIdx].reps){
-    roundIdx++;
     repIdx=0; roundMisses=0;
-    if(roundIdx >= WOD.length){
-      state='done'; t=0; sfx.clear();
-      isNewBest = score > bestScore();
-      if(isNewBest){ try{ localStorage.setItem('wodBest', score); }catch(_){} }
+    if(mode==='amrap'){                 // AMRAP: 인트로 없이 다음 종목으로 순환
+      roundIdx = (roundIdx+1) % WOD.length;
+      startRep(); updateHUD();
       return;
     }
+    roundIdx++;
+    if(roundIdx >= WOD.length){ finishWOD(); return; }
     state='intro'; frame=0;
     updateHUD();
   } else { startRep(); updateHUD(); }
@@ -334,7 +472,7 @@ function drawGym(){
   // 생일 배너
   px(15,50,240,24,'#2a2340');
   px(15,50,240,3,'#3d3355');
-  text('★ 배주열 BIRTHDAY WOD ★', 135, 67, 12, '#ffd23f');
+  text('★ '+playerName+' BIRTHDAY WOD ★', 135, 67, 12, '#ffd23f');
   // 검정 러버 타일 바닥
   px(0,FLOOR,W,H-FLOOR,'#232326');
   px(0,FLOOR,W,2,'#3a3a40');
@@ -879,6 +1017,18 @@ function drawMeter(p){
   text('TIMING', 135, my-10, 8, '#7a7292');
 }
 
+// ---------- 크로스핏 LED 타이머 (상단 중앙, 배너 위) ----------
+function drawTimer(lbl, secs){
+  px(64,4,142,38,'#2e2a3d');            // 프레임
+  px(66,6,138,34,'#08080c');            // 검정 패널
+  px(68,8,134,1,'#1a1a22');
+  text(lbl, 86, 31, 13, '#4ee87a');     // 초록 UP/DN
+  const mm = String(secs/60|0).padStart(2,'0');
+  const ss = String(secs%60|0).padStart(2,'0');
+  text(mm+':'+ss, 150, 31, 16, '#ff3b30');   // 빨간 디지트
+  if((t>>5)&1) px(148,20,1,1,'#ff3b3033');   // 미세 글로우
+}
+
 // ---------- 빌더 종목 아이콘 (18x18) ----------
 function drawMoveIcon(m, ix, iy){
   if(m.move==='snatch'){                 // 바벨 (초록 플레이트)
@@ -941,37 +1091,58 @@ function loop(){
     if((t>>4)&1) text('▶ 탭해서 WOD 짜러 가기', W/2, 192, 12, '#8be0d8');
     const bs = bestScore();
     if(bs>0) text('최고 기록 '+bs, W/2, 214, 10, '#ffd23f');
+    text('선수: '+playerName+'  (탭해서 변경)', W/2, 236, 9, '#8be0d8');
   }
 
   else if(state==='build'){
     drawGym();
     x.fillStyle='rgba(0,0,0,0.78)'; x.fillRect(0,40,W,H-40);
-    text('오늘의 WOD를 직접 짜자!', W/2, 68, 15, '#ffd23f');
-    text('탭한 순서대로 라운드가 됨 · 다시 탭하면 빼기', W/2, 86, 9, '#8be0d8');
+    text('오늘의 WOD를 직접 짜자!', W/2, 62, 14, '#ffd23f');
+    text('탭한 순서대로 라운드 · 선택 후 −/+로 랩 수 조절', W/2, 77, 8, '#8be0d8');
+    // 무게 / 모드 토글
+    px(22,80,48,24, wMode==='scaled'?'#3d3355':'#221e30');
+    px(22,80,48,2, wMode==='scaled'?'#ffd23f':'#4a4468');
+    text('SCALED', 46, 96, 8, wMode==='scaled'?'#ffd23f':'#7a7292');
+    px(70,80,50,24, wMode==='rx'?'#3d3355':'#221e30');
+    px(70,80,50,2, wMode==='rx'?'#ffd23f':'#4a4468');
+    text("RX'D", 95, 96, 8, wMode==='rx'?'#ffd23f':'#7a7292');
+    px(150,80,56,24, mode==='fortime'?'#3d3355':'#221e30');
+    px(150,80,56,2, mode==='fortime'?'#ffd23f':'#4a4468');
+    text('FOR TIME', 178, 96, 8, mode==='fortime'?'#ffd23f':'#7a7292');
+    px(206,80,42,24, mode==='amrap'?'#3d3355':'#221e30');
+    px(206,80,42,2, mode==='amrap'?'#ffd23f':'#4a4468');
+    text('AMRAP', 227, 96, 8, mode==='amrap'?'#ffd23f':'#7a7292');
+    // 종목 리스트
     MOVES.forEach((m,i)=>{
-      const ry = 96 + i*34;
+      const ry = 112 + i*32;
       const sel = buildSel.indexOf(i);
-      px(22,ry,226,30, sel>=0?'#3d3355':'#221e30');
+      px(22,ry,226,28, sel>=0?'#3d3355':'#221e30');
       const bc = sel>=0?'#ffd23f':'#4a4468';
-      px(22,ry,226,2,bc); px(22,ry+28,226,2,bc);
-      px(22,ry,2,30,bc);  px(246,ry,2,30,bc);
-      drawMoveIcon(m, 30, ry+6);
-      text(m.label, 54, ry+20, 11, '#f0ead8', 'left');
-      const info = m.weight ? m.weight+'lb'+(m.wStep?'+':'') : (m.move==='du'?'리듬':'맨몸');
-      text(info, 212, ry+20, 9, '#7a7292', 'right');
+      px(22,ry,226,2,bc); px(22,ry+26,226,2,bc);
+      px(22,ry,2,28,bc);  px(246,ry,2,28,bc);
+      drawMoveIcon(m, 28, ry+5);
+      text(m.label, 52, ry+19, 10, '#f0ead8', 'left');
       if(sel>=0){
-        px(222,ry+6,18,18,'#ffd23f');
+        // 랩 수 스테퍼 + 순서 뱃지
+        px(148,ry+4,20,20,'#221e30'); text('−', 158, ry+19, 12, '#8be0d8');
+        text(customReps(i)+'', 180, ry+19, 11, '#f0ead8');
+        px(190,ry+4,20,20,'#221e30'); text('+', 200, ry+19, 12, '#8be0d8');
+        px(222,ry+4,18,20,'#ffd23f');
         text((sel+1)+'', 231, ry+19, 11, '#1a1526');
+      } else {
+        const info = m.weight ? m.weight+'lb'+(m.wStep?'+':'') : (m.move==='du'?'리듬':'맨몸');
+        text(info+' × '+customReps(i), 240, ry+19, 8, '#7a7292', 'right');
       }
     });
-    // 버튼
-    px(20,350,102,38,'#2a2340'); px(20,350,102,3,'#4a4468');
-    text('풀코스', 71, 374, 12, '#8be0d8');
+    // 시작 버튼
+    px(20,352,102,38,'#2a2340'); px(20,352,102,3,'#4a4468');
+    text('풀코스', 71, 376, 12, '#8be0d8');
     const canGo = buildSel.length>0;
-    px(148,350,102,38, canGo?'#6e2438':'#221e30');
-    px(148,350,102,3, canGo?'#ffd23f':'#4a4468');
-    text('시작!', 199, 374, 12, canGo?'#ffd23f':'#5a5570');
-    if(canGo) text(buildSel.length+'라운드 WOD', W/2, 408, 9, '#8be0d8');
+    px(148,352,102,38, canGo?'#6e2438':'#221e30');
+    px(148,352,102,3, canGo?'#ffd23f':'#4a4468');
+    text('시작!', 199, 376, 12, canGo?'#ffd23f':'#5a5570');
+    text((mode==='amrap'?'AMRAP 60초':'FOR TIME')+' · '+(wMode==='scaled'?'스케일드':"RX'D")
+      +(canGo?' · '+buildSel.length+'라운드':''), W/2, 410, 9, '#8be0d8');
   }
 
   else if(state==='failed'){
@@ -999,13 +1170,23 @@ function loop(){
     if(r.random) text('!! 판정 존이 랩마다 움직임 !!', W/2, 232, 9, '#ff9ec4');
     const cnt = 3 - (frame/30|0);
     if(frame%30===1 && cnt>0) sfx.count();
-    if(cnt>0) text(cnt+'', W/2, 246, 11, '#f0ead8');
+    drawTimer('DN', Math.max(0,cnt));          // 3-2-1 카운트다운
     if(frame>=90){ sfx.go(); state='play'; startRep(); updateHUD(); }
   }
 
   else if(state==='play'){
     frame++;
     drawScene();
+
+    // 타이머: FOR TIME은 카운트업, AMRAP은 카운트다운
+    if(mode==='amrap'){
+      amrapLeft--;
+      if(amrapLeft<=0){ finishWOD(); }
+      else drawTimer('DN', Math.ceil(amrapLeft/60));
+    } else {
+      wodTime++;
+      drawTimer('UP', wodTime/60|0);
+    }
 
     if(phase==='ready'){
       if((frame>>3)&1) text('READY...', W/2, 120, 11, '#2a2340');
@@ -1052,41 +1233,47 @@ function loop(){
     drawAthlete(AX, FLOOR, 'ohstand');
     drawBarbell(AX+6, FLOOR-59, 135);
     x.restore();
-    x.fillStyle='rgba(0,0,0,0.78)'; x.fillRect(0,52,W,254);
+    x.fillStyle='rgba(0,0,0,0.78)'; x.fillRect(0,52,W,304);
 
-    const total = perfects+goods+misses;
-    const rate = total? perfects/total : 0;
-    const grade = rate>=0.85 ? "RX'D! 완벽한 애슬릿 ★" : rate>=0.55 ? '좋아! 폼 조금만 더!' : '스케일드... 재도전?';
+    const gi = gradeInfo();
 
-    text('WOD COMPLETE!', W/2, 80, 18, '#ffd23f');
-    text('SCORE  '+score, W/2, 106, 15, '#f0ead8');
-    text('PERFECT '+perfects+' · GOOD '+goods, W/2, 128, 10, '#8be0d8');
-    text('NO REP '+misses+' · MAX COMBO '+maxCombo, W/2, 143, 10, '#8be0d8');
-    text('총 리프팅 '+tonnage+'lb', W/2, 158, 10, '#8be0d8');
-    text(grade, W/2, 178, 12, '#ff9ec4');
-    text('생일 축하해!', W/2, 196, 15, '#ffd23f');
+    text('WOD COMPLETE!', W/2, 78, 18, '#ffd23f');
+    text('SCORE  '+score, W/2, 102, 15, '#f0ead8');
+    if(isNewBest && (t>>3)&1) text('NEW RECORD!', W/2, 116, 9, '#ffd23f');
+    text('PERFECT '+perfects+' · GOOD '+goods+' · NO REP '+misses, W/2, 130, 9, '#8be0d8');
+    text(mode==='amrap'
+      ? 'AMRAP 60초 · 총 '+(perfects+goods)+'렙'
+      : 'TIME '+fmtTime(wodTime)+' · COMBO '+maxCombo+' · '+tonnage+'lb', W/2, 144, 9, '#8be0d8');
+    text(gi.grade, W/2, 162, 12, '#ff9ec4');
+    text('생일 축하해!', W/2, 178, 14, '#ffd23f');
 
-    if(isNewBest && (t>>3)&1) text('NEW RECORD!', W/2, 120, 9, '#ffd23f');
-
-    if(rate>=0.55){
+    if(gi.passed){
       // 통과: 상품 TYR CXT-3
-      drawShoe(90, 208);
+      drawShoe(90, 188);
       for(let i=0;i<6;i++){                      // 반짝이
         if(((t>>3)+i)%3===0){
-          const spx = 78 + i*24, spy = 210 + ((i*17)%32);
+          const spx = 78 + i*24, spy = 190 + ((i*17)%32);
           px(spx,spy,2,2,'#ffd23f'); px(spx-2,spy,1,2,'#ffd23f88'); px(spx+3,spy,1,2,'#ffd23f88');
         }
       }
-      text('★ 상품: TYR CXT-3 획득! ★', W/2, 262, 11, '#ffd23f');
+      text('★ 상품: TYR CXT-3 획득! ★', W/2, 242, 11, '#ffd23f');
     } else {
       // 미달: 상품 게이트
-      text('목표 미달... 신발은 아직!', W/2, 226, 13, '#ff5a5a');
-      text('퍼펙트 비율을 올려서 재도전하자', W/2, 248, 10, '#8be0d8');
+      text('목표 미달... 신발은 아직!', W/2, 206, 13, '#ff5a5a');
+      text('퍼펙트 비율 올려서 재도전!', W/2, 226, 10, '#8be0d8');
     }
-    if((t>>4)&1) text('▶ 탭해서 다시 도전', W/2, 286, 10, '#7a7292');
+    // 업적 뱃지
+    if(doneBadges.length){
+      const sx0 = W/2 - doneBadges.length*26;
+      doneBadges.forEach((b,k)=>drawBadge(sx0+k*52+17, 256, b.name, newBadgeIds.includes(b.id)));
+    }
+    // 공유 버튼
+    px(60,306,150,34,'#2a6ad4'); px(60,306,150,3,'#6a94e8');
+    text('기록 공유하기', 135, 328, 12, '#f0f0f0');
+    if((t>>4)&1) text('▶ 다른 곳 탭하면 다시 도전', W/2, 372, 9, '#7a7292');
     // 하트
     for(let i=0;i<3;i++){
-      const hy = 330 - ((t*0.6+i*30)%60);
+      const hy = 420 - ((t*0.6+i*30)%60);
       const hx = 50 + i*80 + Math.sin(t*0.05+i)*6;
       const a = 1-((t*0.6+i*30)%60)/60;
       x.fillStyle=`rgba(255,158,196,${a})`;
