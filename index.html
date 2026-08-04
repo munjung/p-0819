@@ -235,11 +235,11 @@ function action(e){
   if(state==='title'){
     if(e){
       const {my} = canvasPos(e);
-      if(my>=192&&my<=206){ rename(); return; }   // 이름 변경
-      if(my>=208&&my<=228){                       // 캐릭터 선택 버튼
+      if(my>=200&&my<=216){ rename(); return; }   // 이름 변경
+      if(my>=218&&my<=242){                       // 캐릭터 선택 버튼
         const {mx} = canvasPos(e);
-        if(mx>=78&&mx<=130){ charSel='M'; }
-        else if(mx>=140&&mx<=192){ charSel='F'; }
+        if(mx>=66&&mx<=130){ charSel='M'; }
+        else if(mx>=140&&mx<=204){ charSel='F'; }
         else return;
         try{ localStorage.setItem('wodChar', charSel); }catch(_){}
         sfx.count();
@@ -1436,21 +1436,21 @@ function loop(){
     drawBarbell(AX+6, FLOOR+44-59, 95);
     x.restore();
     x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,196);   // 선수는 아래로 내려서 안 겹침
-    text('BIRTHDAY', W/2, 92, 22, '#ffd23f');
-    text('WOD', W/2, 116, 22, '#ffd23f');
-    text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 138, 10, '#f0ead8');
-    text('스내치·월볼·머슬업·더블언더·클린&저크', W/2, 152, 10, '#8be0d8');
-    if((t>>4)&1) text('▶ 탭해서 WOD 짜러 가기', W/2, 170, 12, '#8be0d8');
+    text('BIRTHDAY', W/2, 94, 24, '#ffd23f');
+    text('WOD', W/2, 120, 24, '#ffd23f');
+    text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 142, 11, '#f0ead8');
+    text('스내치·월볼·머슬업·더블언더·클린&저크', W/2, 158, 11, '#8be0d8');
+    if((t>>4)&1) text('▶ 탭해서 WOD 짜러 가기', W/2, 178, 13, '#8be0d8');
     const bs = bestScore();
-    if(bs>0) text('최고 기록 '+bs, W/2, 186, 10, '#ffd23f');
-    text('선수: '+playerName+'  (탭해서 변경)', W/2, 200, 9, '#8be0d8');
-    // 캐릭터 선택 버튼 (작게)
-    px(78,208,52,18, charSel==='M'?'#6e2438':'#221e30');
-    px(78,208,52,2,  charSel==='M'?'#ffd23f':'#4a4468');
-    text('♂ 남자', 104, 221, 9, charSel==='M'?'#ffd23f':'#7a7292');
-    px(140,208,52,18, charSel==='F'?'#6e2438':'#221e30');
-    px(140,208,52,2,  charSel==='F'?'#ffd23f':'#4a4468');
-    text('♀ 여자', 166, 221, 9, charSel==='F'?'#ffd23f':'#7a7292');
+    if(bs>0) text('최고 기록 '+bs, W/2, 194, 11, '#ffd23f');
+    text('선수: '+playerName+'  (탭해서 변경)', W/2, 210, 10, '#8be0d8');
+    // 캐릭터 선택 버튼
+    px(66,218,64,22, charSel==='M'?'#6e2438':'#221e30');
+    px(66,218,64,2,  charSel==='M'?'#ffd23f':'#4a4468');
+    text('♂ 남자', 98, 233, 10, charSel==='M'?'#ffd23f':'#7a7292');
+    px(140,218,64,22, charSel==='F'?'#6e2438':'#221e30');
+    px(140,218,64,2,  charSel==='F'?'#ffd23f':'#4a4468');
+    text('♀ 여자', 172, 233, 10, charSel==='F'?'#ffd23f':'#7a7292');
     // 선수 말풍선
     const bob2 = Math.sin(t*0.06)*2;
     px(158,262+bob2,100,24,'#f6f6f2');
