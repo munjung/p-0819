@@ -256,7 +256,7 @@ function drawRig(rx, barY){
 function drawAthlete(ax, ay, pose, opt){
   // ponytail: 레알마드리드 24-25 어웨이 (주황 + 네이비 트림)
   const skin='#f2cba6', hair='#241d1a', top='#f2803a', topD='#1e2a52',
-        pants='#2e2a3d', shoe='#f0a838';
+        shorts='#2a6ad4', sock='#f4f4f2';
   const wobble = (pose==='stumble') ? Math.sin(t*0.6)*2 : 0;
 
   function head(hx,hy){
@@ -272,6 +272,18 @@ function drawAthlete(ax, ay, pose, opt){
     px(hx+6,hy+4,2,1,'#1a1a1a');
     px(hx+3,hy+7,4,1,'#c8836a');
   }
+  // 곧은 다리: 반바지 → 맨다리 → 흰 나이키 양말
+  function leg(lx,ly,w,h){
+    const s1 = Math.round(h*0.45), s2 = Math.round(h*0.3);
+    px(lx,ly,w,s1,shorts);
+    px(lx,ly+s1,w,s2,skin);
+    px(lx,ly+s1+s2,w,h-s1-s2,sock);
+  }
+  // 메트콘9: 어두운 어퍼 + 흰 밑창
+  function foot(fx,fy,w){
+    px(fx,fy,w,2,'#2a2a30');
+    px(fx,fy+2,w,1,'#f0f0f0');
+  }
 
   if(pose==='setup'){
     // 데드리프트 셋업
@@ -280,10 +292,11 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-2,ay-27,16,2,topD);
     px(ax+10,ay-24,4,14,skin);
     px(ax+16,ay-24,4,14,skin);
-    px(ax-2,ay-18,8,10,pants);
-    px(ax,ay-8,7,8,pants);
-    px(ax-1,ay-3,9,3,shoe);
-    px(ax+8,ay-3,9,3,shoe);
+    px(ax-2,ay-18,8,10,shorts);       // 굽힌 허벅지
+    px(ax,ay-8,7,3,skin);             // 정강이
+    px(ax,ay-5,7,2,sock);
+    foot(ax-1,ay-3,9);
+    foot(ax+8,ay-3,9);
   }
   else if(pose==='pull'){
     // 퍼스트 풀: 바 무릎~허벅지, 팔 아래로
@@ -292,9 +305,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax,ay-37,14,2,topD);
     px(ax+9,ay-35,4,13,skin);
     px(ax+14,ay-35,4,13,skin);
-    px(ax,ay-25,6,12,pants);
-    px(ax+7,ay-25,6,12,pants);
-    px(ax-1,ay-3,8,3,shoe); px(ax+7,ay-3,8,3,shoe);
+    leg(ax,ay-25,6,22);
+    leg(ax+7,ay-25,6,22);
+    foot(ax-1,ay-3,8); foot(ax+7,ay-3,8);
   }
   else if(pose==='extend'){
     // 익스텐션: 발끝 세우고 어깨 으쓱, 팔꿈치 높이
@@ -305,9 +318,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-5,ay-42,4,8,skin);
     px(ax+9,ay-46,5,5,skin);
     px(ax+9,ay-42,4,8,skin);
-    px(ax,ay-34,5,15,pants);
-    px(ax+6,ay-34,5,15,pants);
-    px(ax,ay-6,6,3,shoe); px(ax+6,ay-6,6,3,shoe);   // 발끝
+    leg(ax,ay-34,5,28);
+    leg(ax+6,ay-34,5,28);
+    foot(ax,ay-6,6); foot(ax+6,ay-6,6);   // 발끝
   }
   else if(pose==='overhead'){
     // 오버헤드 스쿼트 캐치 (깊게)
@@ -316,11 +329,13 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-1,ay-33,12,2,topD);
     px(ax-4,ay-48,4,16,skin);
     px(ax+9,ay-48,4,16,skin);
-    px(ax-3,ay-23,8,8,pants);
-    px(ax+7,ay-23,8,8,pants);
-    px(ax-5,ay-15,8,12,pants);
-    px(ax+9,ay-15,8,12,pants);
-    px(ax-6,ay-3,9,3,shoe); px(ax+9,ay-3,9,3,shoe);
+    px(ax-3,ay-23,8,8,shorts);        // 허벅지
+    px(ax+7,ay-23,8,8,shorts);
+    px(ax-5,ay-15,8,5,skin);          // 정강이
+    px(ax+9,ay-15,8,5,skin);
+    px(ax-5,ay-10,8,7,sock);
+    px(ax+9,ay-10,8,7,sock);
+    foot(ax-6,ay-3,9); foot(ax+9,ay-3,9);
   }
   else if(pose==='ohstand'){
     // 오버헤드 스탠드업 (락아웃 완성)
@@ -329,9 +344,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-1,ay-43,12,2,topD);
     px(ax-4,ay-58,4,16,skin);
     px(ax+9,ay-58,4,16,skin);
-    px(ax,ay-29,5,26,pants);
-    px(ax+6,ay-29,5,26,pants);
-    px(ax-1,ay-3,7,3,shoe); px(ax+6,ay-3,7,3,shoe);
+    leg(ax,ay-29,5,26);
+    leg(ax+6,ay-29,5,26);
+    foot(ax-1,ay-3,7); foot(ax+6,ay-3,7);
   }
   else if(pose==='hang'){
     // 풀업바 매달림 (ay = 바 y)
@@ -340,9 +355,9 @@ function drawAthlete(ax, ay, pose, opt){
     head(ax-1, ay+14);
     px(ax-1,ay+23,11,13,top);
     px(ax-1,ay+23,11,2,topD);
-    px(ax,ay+36+wobble,4,12,pants);
-    px(ax+5,ay+36-wobble,4,12,pants);
-    px(ax-1,ay+48,6,3,shoe); px(ax+5,ay+48,6,3,shoe);
+    leg(ax,ay+36+wobble,4,12);
+    leg(ax+5,ay+36-wobble,4,12);
+    foot(ax-1,ay+48,6); foot(ax+5,ay+48,6);
   }
   else if(pose==='kip'){
     // 킵 스윙: 몸 활처럼, 다리 뒤로
@@ -351,10 +366,11 @@ function drawAthlete(ax, ay, pose, opt){
     head(ax-3, ay+13);
     px(ax-2,ay+22,12,12,top);
     px(ax-2,ay+22,12,2,topD);
-    px(ax+3,ay+34,5,10,pants);
-    px(ax+7,ay+42,5,8,pants);
-    px(ax+10,ay+48,6,3,shoe);
-    px(ax+4,ay+42,5,3,shoe);
+    px(ax+3,ay+34,5,10,shorts);       // 허벅지 뒤로
+    px(ax+7,ay+42,3,5,skin);          // 정강이
+    px(ax+9,ay+45,4,4,sock);
+    foot(ax+10,ay+48,6);
+    foot(ax+4,ay+42,5);
   }
   else if(pose==='pullup'){
     // 하이 풀: 가슴이 바 높이
@@ -362,9 +378,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-5,ay,5,6,skin);
     px(ax+10,ay,5,6,skin);
     px(ax-1,ay+1,11,12,top);
-    px(ax,ay+13,4,10,pants);
-    px(ax+5,ay+13,4,10,pants);
-    px(ax-1,ay+23,6,3,shoe); px(ax+5,ay+23,6,3,shoe);
+    leg(ax,ay+13,4,10);
+    leg(ax+5,ay+13,4,10);
+    foot(ax-1,ay+23,6); foot(ax+5,ay+23,6);
   }
   else if(pose==='dip'){
     // 트랜지션: 상체 바 위로, 팔꿈치 굽힘
@@ -373,9 +389,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-1,ay-9,11,2,topD);
     px(ax-5,ay-8,4,9,skin);
     px(ax+10,ay-8,4,9,skin);
-    px(ax,ay+2,4,10,pants);
-    px(ax+5,ay+2,4,10,pants);
-    px(ax-1,ay+12,6,3,shoe); px(ax+5,ay+12,6,3,shoe);
+    leg(ax,ay+2,4,10);
+    leg(ax+5,ay+2,4,10);
+    foot(ax-1,ay+12,6); foot(ax+5,ay+12,6);
   }
   else if(pose==='support'){
     // 바 위 서포트 락아웃
@@ -384,9 +400,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-1,ay-23,11,2,topD);
     px(ax-5,ay-22,4,12,skin);
     px(ax+10,ay-22,4,12,skin);
-    px(ax,ay-10,4,10,pants);
-    px(ax+5,ay-10,4,10,pants);
-    px(ax-1,ay,6,3,shoe); px(ax+5,ay,6,3,shoe);
+    leg(ax,ay-10,4,10);
+    leg(ax+5,ay-10,4,10);
+    foot(ax-1,ay,6); foot(ax+5,ay,6);
   }
   else if(pose==='du'){
     // 더블언더 (opt.jump: 0~1 점프 높이, opt.spin: 로프 회전)
@@ -396,9 +412,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-1,jy-39,12,2,topD);
     px(ax-4,jy-36,4,9,skin);
     px(ax+9,jy-36,4,9,skin);
-    px(ax,jy-26,5,14,pants);
-    px(ax+6,jy-26,5,14,pants);
-    px(ax-1,jy-12,7,3,shoe); px(ax+6,jy-12,7,3,shoe);
+    leg(ax,jy-26,5,14);
+    leg(ax+6,jy-26,5,14);
+    foot(ax-1,jy-12,7); foot(ax+6,jy-12,7);
     // 줄넘기 로프
     const spin = opt ? opt.spin : 0;
     x.strokeStyle='#8be0d8'; x.lineWidth=1;
@@ -416,9 +432,9 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax+2+wobble,ay-37,12,13,top);
     px(ax-2,ay-36,4,10,skin);
     px(ax+13,ay-38,4,10,skin);
-    px(ax+2,ay-24,5,11,pants);
-    px(ax+8,ay-24,5,11,pants);
-    px(ax+1,ay-3,7,3,shoe); px(ax+9,ay-3,7,3,shoe);
+    leg(ax+2,ay-24,5,21);
+    leg(ax+8,ay-24,5,21);
+    foot(ax+1,ay-3,7); foot(ax+9,ay-3,7);
     px(ax+16,ay-50,2,3,'#8be0d8');   // 땀
   }
 }
