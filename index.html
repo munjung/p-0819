@@ -314,6 +314,11 @@ function buildShareCard(){
     drawShoe(90, 226);
     text('★ TYR CXT-3 획득! ★', 135, 288, 11, '#ffd23f');
   }
+  // 선수 (승리 포즈, 선택한 캐릭터)
+  x.save();
+  x.translate(222,316); x.scale(1.3,1.3); x.translate(-222,-316);
+  drawAthlete(222, 316, 'ohstand');
+  x.restore();
   text(new Date().toISOString().slice(0,10)+' · CROSSFIT ARCADE', 135, 336, 8, '#7a7292');
   x = old;
   return sc;
