@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>BIRTHDAY WOD</title>
+<title>배주열 BIRTHDAY WOD</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Galmuri11:wght@400;700&display=swap');
   * { margin:0; padding:0; box-sizing:border-box;
@@ -249,14 +249,14 @@ function drawGym(){
   px(0,FLOOR,W,2,'#3a3a40');
   for(let i=0;i<5;i++) px(i*60,FLOOR,1,H-FLOOR,'#2e2e33');
   px(0,FLOOR+40,W,1,'#2e2e33');
-  // 컬러 범퍼 플레이트 스택 (45lb파랑/35lb노랑/25lb초록/15lb회색/10lb검정)
-  const stackCols=['#2a6ad4','#e8c22a','#4ea84a','#9a9aa2','#1e1e22'];
-  for(let s=0;s<2;s++){
-    for(let k=0;k<5;k++){
-      px(216+s*22, FLOOR-6-k*6, 20, 5, stackCols[(k+s)%5]);
-      px(216+s*22, FLOOR-6-k*6, 20, 1, '#ffffff33');
+  // 범퍼 플레이트: 무게별 한 줄씩 (파랑45×10 / 노랑35×10 / 초록25×8 / 회색15×10 / 검정10×20)
+  const stacks=[['#2a6ad4',10],['#e8c22a',10],['#4ea84a',8],['#9a9aa2',10],['#1e1e22',20]];
+  stacks.forEach(([col,n],s)=>{
+    for(let k=0;k<n;k++){
+      px(158+s*20, FLOOR-4-k*4, 18, 4, col);
+      px(158+s*20, FLOOR-4-k*4, 18, 1, '#ffffff2e');
     }
-  }
+  });
   // 벤치 + 파란 물통 (왼쪽)
   px(8,FLOOR-16,42,5,'#4a4a52');
   px(10,FLOOR-11,4,11,'#3a3a40'); px(44,FLOOR-11,4,11,'#3a3a40');
