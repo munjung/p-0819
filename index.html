@@ -566,6 +566,10 @@ function drawCheese(cx,cy){
   const wht='#fbf6ee', org='#d98b45', orgL='#eda85f', eye='#b8cf7a';
   const loaf = (t%900) >= 620;         // ~15초 주기로 약 4.5초 식빵
 
+  if((t%450) < 130){                   // 가끔 울음
+    text('냐아아앙--', cx+42, cy-14+Math.sin(t*0.08)*2, 8, '#4a3a28');
+  }
+
   if(loaf){
     // 식빵 자세: 낮고 둥근 몸통, 발 다 숨기고 눈 지그시
     px(cx-7,cy-8,16,8,wht);
