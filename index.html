@@ -1428,10 +1428,10 @@ function loop(){
     text('× '+r.reps, W/2, 214, 12, '#ffd23f');
     if(r.random) text('!! 판정 존이 랩마다 움직임 !!', W/2, 232, 9, '#ff9ec4');
     if(mode==='fortime') text('타임캡 '+fmtTime(timeCap), W/2, 248, 9, '#7a7292');
-    const cnt = 3 - (frame/30|0);
+    const cnt = 5 - (frame/30|0);
     if(frame%30===1 && cnt>0) sfx.count();
-    drawTimer('DN', Math.max(0,cnt));          // 3-2-1 카운트다운
-    if(frame>=90){ sfx.go(); state='play'; startRep(); updateHUD(); }
+    drawTimer('DN', Math.max(0,cnt));          // 5-4-3-2-1 카운트다운
+    if(frame>=150){ sfx.go(); state='play'; startRep(); updateHUD(); }
   }
 
   else if(state==='play'){
