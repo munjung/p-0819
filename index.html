@@ -237,11 +237,13 @@ function drawGym(){
     px(28+i*88,100,6,10,'#3a6ad4');
     px(29+i*88,112,4,1,'#b8b5ac');
   }
-  // 월볼샷 타겟: 기둥-크로스바 교차점에 설치
-  x.fillStyle='#2a2622';
-  x.beginPath(); x.arc(207,110,9,0,Math.PI*2); x.fill();
-  x.fillStyle='#e8453a';
-  x.beginPath(); x.arc(207,110,3,0,Math.PI*2); x.fill();
+  // 월볼샷 타겟: 세 기둥-크로스바 교차점 모두 설치
+  [31,119,207].forEach(tx=>{
+    x.fillStyle='#2a2622';
+    x.beginPath(); x.arc(tx,110,9,0,Math.PI*2); x.fill();
+    x.fillStyle='#e8453a';
+    x.beginPath(); x.arc(tx,110,3,0,Math.PI*2); x.fill();
+  });
   // 짐내스틱 링 (스트랩 + 나무 링)
   px(70,112,2,34,'#dcd9d0');
   x.strokeStyle='#b8945a'; x.lineWidth=2;
