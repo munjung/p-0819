@@ -561,9 +561,28 @@ function drawGym(){
   drawCheese(30, FLOOR-16);          // 벤치 위 치즈
 }
 
-// 치즈 (고양이): 흰 바탕 + 주황 얼룩, 벤치에 앉아 꼬리 살랑
+// 치즈 (고양이): 평소엔 앉아서 꼬리 살랑, 가끔 식빵 굽기
 function drawCheese(cx,cy){
   const wht='#fbf6ee', org='#d98b45', orgL='#eda85f', eye='#b8cf7a';
+  const loaf = (t%900) >= 620;         // ~15초 주기로 약 4.5초 식빵
+
+  if(loaf){
+    // 식빵 자세: 낮고 둥근 몸통, 발 다 숨기고 눈 지그시
+    px(cx-7,cy-8,16,8,wht);
+    px(cx-5,cy-8,6,3,org);             // 등 얼룩
+    px(cx+3,cy-6,4,2,org);
+    px(cx-7,cy-3,16,3,wht);            // 아랫단 (발 숨김)
+    px(cx-10,cy-4,4,3,orgL);           // 옆에 말린 꼬리
+    px(cx+1,cy-14,10,7,wht);           // 머리 (낮게)
+    px(cx+6,cy-14,5,4,org);
+    px(cx+1,cy-16,3,3,org);            // 귀
+    px(cx+8,cy-16,3,3,org);
+    px(cx+3,cy-11,2,1,'#2a2a2a');      // 지그시 감은 눈 (- -)
+    px(cx+7,cy-11,2,1,'#2a2a2a');
+    px(cx+5,cy-9,2,1,'#f0a8ae');
+    return;
+  }
+
   const tw = Math.sin(t*0.06)*3;
   px(cx-8,cy-6+tw*0.5,4,3,org);        // 꼬리
   px(cx-11,cy-9+tw,4,3,orgL);
