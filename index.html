@@ -50,7 +50,7 @@ const FLOOR = 360;
 
 // ---------- WOD 정의 ----------
 // pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
-const WOD = [
+const MOVES = [
   // ponytail: 테스트용 랩 수 (정식: 8/6/8/16/6/10)
   { move:'snatch', label:'스내치',           weight:95,  wStep:20, wMax:135, reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
   { move:'wb',     label:'월볼샷',            weight:20,  reps:3,  dur:72, pw:0.045, gw:0.100, random:false },
@@ -60,6 +60,8 @@ const WOD = [
   { move:'cj',     label:'클린&저크',         weight:135, wStep:20, wMax:175, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
   { move:'alt',    label:'스내치 155lb + 머슬업', weight:155, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
 ];
+let WOD = MOVES.slice();   // 빌더에서 고른 라운드 구성 (기본: 풀코스)
+let buildSel = [];         // 빌더 선택 순서 (MOVES 인덱스)
 
 let state = 'title';   // title | intro | play | done
 let roundIdx = 0, repIdx = 0;
@@ -122,9 +124,34 @@ function toggleMute(){ muted=!muted; muteEl.textContent = muted?'♪ OFF':'♪ O
 muteEl.addEventListener('pointerdown', e=>{ e.preventDefault(); audioInit(); toggleMute(); });
 
 // ---------- 입력 ----------
-function action(){
+function launchWOD(){
+  WOD = buildSel.length ? buildSel.map(i=>MOVES[i]) : MOVES.slice();
+  startWOD();
+}
+function buildTap(e){
+  const r=c.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*W/r.width, my=(e.clientY-r.top)*H/r.height;
+  const rowH=34, top=96;
+  const i=Math.floor((my-top)/rowH);
+  if(mx>=22&&mx<=248&&my>=top&&i>=0&&i<MOVES.length&&my<top+MOVES.length*rowH){
+    const idx=buildSel.indexOf(i);
+    if(idx>=0) buildSel.splice(idx,1); else buildSel.push(i);
+    sfx.count();
+    return;
+  }
+  if(my>=350&&my<=388){
+    if(mx>=20&&mx<=122){ buildSel=[]; sfx.go(); launchWOD(); }         // 풀코스
+    else if(mx>=148&&mx<=250&&buildSel.length){ sfx.go(); launchWOD(); } // 내가 짠 WOD
+  }
+}
+function action(e){
   audioInit();
-  if(state==='title'){ startWOD(); return; }
+  if(state==='title'){ state='build'; buildSel=[]; t=0; return; }
+  if(state==='build'){
+    if(e) buildTap(e);
+    else launchWOD();          // 키보드 SPACE
+    return;
+  }
   if(state==='done'){ if(t>60){ state='title'; t=0; updateHUD(); } return; }
   if(state==='play'){
     if(phase==='run') judge(frame / repDur);
@@ -135,7 +162,7 @@ addEventListener('keydown', e=>{
   if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); if(!e.repeat) action(); }
   if(e.code==='KeyM'){ audioInit(); toggleMute(); }
 });
-c.addEventListener('pointerdown', e=>{ e.preventDefault(); action(); });
+c.addEventListener('pointerdown', e=>{ e.preventDefault(); action(e); });
 ['contextmenu','selectstart','dragstart'].forEach(ev=>document.addEventListener(ev, e=>e.preventDefault()));
 document.addEventListener('gesturestart', e=>e.preventDefault());
 
@@ -870,9 +897,39 @@ function loop(){
     text('WOD', W/2, 130, 26, '#ffd23f');
     text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 156, 10, '#f0ead8');
     text('스내치·월볼·머슬업·더블언더·클린&저크', W/2, 172, 10, '#8be0d8');
-    if((t>>4)&1) text('▶ 탭해서 시작', W/2, 192, 12, '#8be0d8');
+    if((t>>4)&1) text('▶ 탭해서 WOD 짜러 가기', W/2, 192, 12, '#8be0d8');
     const bs = bestScore();
     if(bs>0) text('최고 기록 '+bs, W/2, 214, 10, '#ffd23f');
+  }
+
+  else if(state==='build'){
+    drawGym();
+    x.fillStyle='rgba(0,0,0,0.78)'; x.fillRect(0,40,W,H-40);
+    text('오늘의 WOD를 직접 짜자!', W/2, 68, 15, '#ffd23f');
+    text('탭한 순서대로 라운드가 됨 · 다시 탭하면 빼기', W/2, 86, 9, '#8be0d8');
+    MOVES.forEach((m,i)=>{
+      const ry = 96 + i*34;
+      const sel = buildSel.indexOf(i);
+      px(22,ry,226,30, sel>=0?'#3d3355':'#221e30');
+      const bc = sel>=0?'#ffd23f':'#4a4468';
+      px(22,ry,226,2,bc); px(22,ry+28,226,2,bc);
+      px(22,ry,2,30,bc);  px(246,ry,2,30,bc);
+      text(m.label, 34, ry+20, 11, '#f0ead8', 'left');
+      const info = m.weight ? m.weight+'lb'+(m.wStep?'+':'') : (m.move==='du'?'리듬':'맨몸');
+      text(info, 212, ry+20, 9, '#7a7292', 'right');
+      if(sel>=0){
+        px(222,ry+6,18,18,'#ffd23f');
+        text((sel+1)+'', 231, ry+19, 11, '#1a1526');
+      }
+    });
+    // 버튼
+    px(20,350,102,38,'#2a2340'); px(20,350,102,3,'#4a4468');
+    text('풀코스', 71, 374, 12, '#8be0d8');
+    const canGo = buildSel.length>0;
+    px(148,350,102,38, canGo?'#6e2438':'#221e30');
+    px(148,350,102,3, canGo?'#ffd23f':'#4a4468');
+    text('시작!', 199, 374, 12, canGo?'#ffd23f':'#5a5570');
+    if(canGo) text(buildSel.length+'라운드 WOD', W/2, 408, 9, '#8be0d8');
   }
 
   else if(state==='failed'){
