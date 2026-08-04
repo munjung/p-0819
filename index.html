@@ -35,7 +35,7 @@
     </div>
   </div>
   <canvas id="c" width="480" height="270"></canvas>
-  <div id="hint">게이지가 골드 존에 왔을 때 클릭 / SPACE &nbsp;·&nbsp; M 음소거</div>
+  <div id="hint">게이지가 골드 존에 왔을 때 클릭 / SPACE &nbsp;·&nbsp; 미리 누르면 NO REP! &nbsp;·&nbsp; M 음소거</div>
 </div>
 
 <script>
@@ -47,23 +47,24 @@ const W = 480, H = 270;
 const FLOOR = 226;
 
 // ---------- WOD 정의 ----------
+// pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
 const WOD = [
-  { move:'snatch', label:'스내치', reps:8,  dur:95 },
-  { move:'bmu',    label:'바 머슬업', reps:8,  dur:80 },
-  { move:'alt',    label:'스내치 + 머슬업', reps:10, dur:66 },
+  { move:'snatch', label:'스내치',           weight:40, reps:8,  dur:92, pw:0.045, gw:0.105, random:false },
+  { move:'bmu',    label:'바 머슬업',         weight:0,  reps:8,  dur:78, pw:0.040, gw:0.100, random:true  },
+  { move:'du',     label:'더블언더',          weight:0,  reps:16, dur:34, pw:0.050, gw:0.110, random:false },
+  { move:'alt',    label:'스내치 60kg + 머슬업', weight:60, reps:10, dur:62, pw:0.032, gw:0.085, random:true  },
 ];
-// 판정 존 (게이지 진행도 0~1)
-const GOOD_LO = 0.72, GOOD_HI = 0.93;
-const PERF_LO = 0.80, PERF_HI = 0.885;
 
 let state = 'title';   // title | intro | play | done
 let roundIdx = 0, repIdx = 0;
 let phase = 'ready';   // ready | run | result
 let frame = 0;
 let curMove = 'snatch';
+let repDur = 90;
+let zone = {pLo:0.8, pHi:0.89, gLo:0.72, gHi:0.93};
 let judgment = null;
 let combo = 0, maxCombo = 0, score = 0;
-let perfects = 0, goods = 0, misses = 0;
+let perfects = 0, goods = 0, misses = 0, tonnage = 0;
 let t = 0, shake = 0;
 let particles = [];
 let popups = [];
@@ -91,6 +92,7 @@ const sfx = {
   perfect(){ [784,988,1319].forEach((f,i)=>setTimeout(()=>beep(f,0.1,'square',0.11), i*55)); },
   good(){ beep(660, 0.1, 'square', 0.1); },
   norep(){ beep(150, 0.3, 'sawtooth', 0.15, -80); },
+  du(){ beep(990, 0.05, 'square', 0.09); },
   clear(){ [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'square',0.1), i*120)); },
 };
 const muteEl = document.getElementById('mute');
@@ -102,7 +104,10 @@ function action(){
   audioInit();
   if(state==='title'){ startWOD(); return; }
   if(state==='done'){ if(t>60){ state='title'; t=0; updateHUD(); } return; }
-  if(state==='play' && phase==='run') judge(frame / curDur());
+  if(state==='play'){
+    if(phase==='run') judge(frame / repDur);
+    else if(phase==='ready') judge(0);   // 부정출발도 NO REP
+  }
 }
 addEventListener('keydown', e=>{
   if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); if(!e.repeat) action(); }
@@ -113,9 +118,12 @@ c.addEventListener('pointerdown', e=>{ e.preventDefault(); action(); });
 document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ---------- 진행 ----------
-function curDur(){
-  // 라운드 기본 속도 + 랩이 진행될수록 살짝 빨라짐
-  return Math.max(40, WOD[roundIdx].dur - repIdx*2);
+function curWeight(){ return WOD[roundIdx].weight; }
+function readyDur(){ return curMove==='du' ? 10 : 32; }
+function resultDur(){
+  const ok = judgment && judgment.pts>0;
+  if(curMove==='du') return ok ? 12 : 30;
+  return ok ? 56 : 42;
 }
 function pickMove(){
   const m = WOD[roundIdx].move;
@@ -123,23 +131,29 @@ function pickMove(){
 }
 function startWOD(){
   state='intro'; roundIdx=0; repIdx=0; frame=0; t=0;
-  combo=0; maxCombo=0; score=0; perfects=0; goods=0; misses=0;
+  combo=0; maxCombo=0; score=0; perfects=0; goods=0; misses=0; tonnage=0;
   particles=[]; popups=[];
   updateHUD();
 }
 function startRep(){
   phase='ready'; frame=0; judgment=null; pickMove();
+  const r = WOD[roundIdx];
+  // 속도: 랩 진행 + 랜덤 편차
+  repDur = Math.max(28, r.dur - repIdx*1.5 + (Math.random()*10-5));
+  // 존 위치: random 라운드는 랩마다 이동 (타이밍 암기 방지)
+  const zc = r.random ? 0.55 + Math.random()*0.3 : 0.845;
+  zone = { pLo:zc-r.pw, pHi:zc+r.pw, gLo:zc-r.gw, gHi:zc+r.gw };
 }
 function judge(p){
   let res;
-  if(p>=PERF_LO && p<=PERF_HI){
+  if(p>=zone.pLo && p<=zone.pHi){
     combo++; perfects++;
     const pts = 100 + combo*10;
     score += pts;
     res = {text:'PERFECT!', col:'#ffd23f', pts};
-    sfx.perfect(); shake=5;
-    chalk(20);
-  } else if(p>=GOOD_LO && p<=GOOD_HI){
+    if(curMove==='du') sfx.du(); else sfx.perfect();
+    shake=5; chalk(20);
+  } else if(p>=zone.gLo && p<=zone.gHi){
     combo++; goods++;
     const pts = 50 + combo*5;
     score += pts;
@@ -147,13 +161,14 @@ function judge(p){
     sfx.good(); chalk(8);
   } else {
     combo=0; misses++;
-    res = {text:p<GOOD_LO?'EARLY!':'NO REP!', col:'#ff5a5a', pts:0};
+    res = {text:p<zone.gLo?'EARLY!':'NO REP!', col:'#ff5a5a', pts:0};
     sfx.norep(); shake=7;
   }
+  if(res.pts && curMove==='snatch') tonnage += curWeight();
   maxCombo = Math.max(maxCombo, combo);
   judgment = res;
-  popups.push({text:res.text, col:res.col, y:100, life:40});
-  if(res.pts) popups.push({text:'+'+res.pts, col:'#f0ead8', y:118, life:40});
+  popups.push({text:res.text, col:res.col, y:96, life:40});
+  if(res.pts) popups.push({text:'+'+res.pts, col:'#f0ead8', y:114, life:40});
   phase='result'; frame=0;
   updateHUD();
 }
@@ -168,15 +183,16 @@ function nextRep(){
   } else { startRep(); updateHUD(); }
 }
 function updateHUD(){
+  const r = WOD[roundIdx];
   document.getElementById('roundLabel').textContent =
     (state==='play'||state==='intro')
-      ? `ROUND ${roundIdx+1}/${WOD.length} — ${WOD[roundIdx].label} ${repIdx+1}/${WOD[roundIdx].reps}`
+      ? `ROUND ${roundIdx+1}/${WOD.length} — ${r.label} ${repIdx+1}/${r.reps}`
       : 'BIRTHDAY WOD';
   document.getElementById('scoreLabel').textContent = 'SCORE '+score;
 }
 function chalk(n){
   for(let i=0;i<n;i++) particles.push({
-    x:200+Math.random()*30-15, y:FLOOR-70-Math.random()*40,
+    x:200+Math.random()*30-15, y:FLOOR-80-Math.random()*40,
     vx:(Math.random()-.5)*3, vy:-Math.random()*2.5,
     life:20+Math.random()*20, col:'#ffffffcc'
   });
@@ -192,19 +208,14 @@ function text(str,cx,cy,size,col,align='center'){
 function drawGym(){
   px(0,0,W,H,'#14121c');
   for(let i=0;i<6;i++) px(i*80,0,1,FLOOR,'#1c1928');
-  // 생일 배너
-  px(90,22,300,26,'#2a2340');
-  px(90,22,300,3,'#3d3355');
-  text('★ HAPPY BIRTHDAY WOD ★', 240, 40, 13, '#ffd23f');
-  // 플레이트 랙
+  px(90,10,300,24,'#2a2340');
+  px(90,10,300,3,'#3d3355');
+  text('★ HAPPY BIRTHDAY WOD ★', 240, 27, 13, '#ffd23f');
   px(10,FLOOR-46,10,46,'#c94f5a'); px(22,FLOOR-40,8,40,'#4f7cc9'); px(32,FLOOR-32,7,32,'#f0c020');
-  // 케틀벨
   px(438,FLOOR-16,16,16,'#3a3648'); px(442,FLOOR-22,8,8,'#3a3648'); px(444,FLOOR-20,4,4,'#14121c');
-  // 러버 매트 바닥
   px(0,FLOOR,W,H-FLOOR,'#221e30');
   for(let i=0;i<8;i++) px(i*60,FLOOR,1,H-FLOOR,'#2a2540');
   px(0,FLOOR,W,2,'#332e48');
-  // 조명
   for(let i=0;i<3;i++){
     px(70+i*160,0,40,6,'#3a3648');
     x.fillStyle='rgba(255,240,200,0.03)';
@@ -212,12 +223,18 @@ function drawGym(){
   }
 }
 
-// ---------- 바벨 ----------
-function drawBarbell(bx, by){
+// ---------- 바벨 (무게 표시 + 60kg는 플레이트 2장) ----------
+function drawBarbell(bx, by, kg){
+  const heavy = kg>=50;
   px(bx-38,by-10,10,20,'#c94f5a'); px(bx-36,by-6,6,12,'#a83a45');
   px(bx+28,by-10,10,20,'#c94f5a'); px(bx+30,by-6,6,12,'#a83a45');
+  if(heavy){  // 파란 플레이트 추가
+    px(bx-46,by-9,8,18,'#4f7cc9'); px(bx-44,by-5,4,10,'#3a5f9e');
+    px(bx+38,by-9,8,18,'#4f7cc9'); px(bx+40,by-5,4,10,'#3a5f9e');
+  }
   px(bx-28,by-2,56,4,'#b8bcc8');
   px(bx-28,by-2,56,1,'#e0e4ec');
+  if(kg) text(kg+'kg', bx, by-16, 9, '#ffd23f');
 }
 
 // ---------- 풀업 리그 ----------
@@ -230,8 +247,8 @@ function drawRig(rx, barY){
 }
 
 // ---------- 애슬릿 (포니테일) ----------
-// pose: setup | pull | overhead | hang | pullup | support | stumble
-function drawAthlete(ax, ay, pose){
+// pose: setup | pull | extend | overhead | ohstand | hang | kip | pullup | dip | support | du | stumble
+function drawAthlete(ax, ay, pose, opt){
   const skin='#f2cba6', hair='#3a2820', top='#d94f7a', topD='#b83a60',
         pants='#2e2a3d', shoe='#f0f0f0';
   const wobble = (pose==='stumble') ? Math.sin(t*0.6)*2 : 0;
@@ -239,7 +256,6 @@ function drawAthlete(ax, ay, pose){
   function head(hx,hy,tailDir){
     px(hx,hy,10,9,skin);
     px(hx,hy-2,10,4,hair); px(hx-1,hy-1,3,5,hair);
-    // 포니테일
     px(hx+8+tailDir*2, hy-1, 4, 3, hair);
     px(hx+10+tailDir*3, hy+1, 3, 6, hair);
     px(hx+2,hy+3,2,2,'#1a1a1a'); px(hx+6,hy+3,2,2,'#1a1a1a');
@@ -247,7 +263,7 @@ function drawAthlete(ax, ay, pose){
   }
 
   if(pose==='setup'){
-    // 데드리프트 셋업: 상체 숙이고 바 그립
+    // 데드리프트 셋업
     head(ax+8, ay-34, -1);
     px(ax-2,ay-27,16,10,top);
     px(ax-2,ay-27,16,2,topD);
@@ -259,28 +275,52 @@ function drawAthlete(ax, ay, pose){
     px(ax+8,ay-3,9,3,shoe);
   }
   else if(pose==='pull'){
-    // 세컨드 풀: 직립 + 바 가슴 높이
+    // 퍼스트 풀: 바 무릎~허벅지, 팔 아래로
+    head(ax+3, ay-46, -1);
+    px(ax,ay-37,14,12,top);
+    px(ax,ay-37,14,2,topD);
+    px(ax+9,ay-35,4,13,skin);
+    px(ax+14,ay-35,4,13,skin);
+    px(ax,ay-25,6,12,pants);
+    px(ax+7,ay-25,6,12,pants);
+    px(ax-1,ay-3,8,3,shoe); px(ax+7,ay-3,8,3,shoe);
+  }
+  else if(pose==='extend'){
+    // 익스텐션: 발끝 세우고 어깨 으쓱, 팔꿈치 높이
+    head(ax, ay-56, 1);
+    px(ax-1,ay-47,12,13,top);
+    px(ax-1,ay-47,12,2,topD);
+    px(ax-5,ay-46,5,5,skin);       // 팔꿈치 올림
+    px(ax-5,ay-42,4,8,skin);
+    px(ax+9,ay-46,5,5,skin);
+    px(ax+9,ay-42,4,8,skin);
+    px(ax,ay-34,5,15,pants);
+    px(ax+6,ay-34,5,15,pants);
+    px(ax,ay-6,6,3,shoe); px(ax+6,ay-6,6,3,shoe);   // 발끝
+  }
+  else if(pose==='overhead'){
+    // 오버헤드 스쿼트 캐치 (깊게)
+    head(ax, ay-42, 1);
+    px(ax-1,ay-33,12,10,top);
+    px(ax-1,ay-33,12,2,topD);
+    px(ax-4,ay-48,4,16,skin);
+    px(ax+9,ay-48,4,16,skin);
+    px(ax-3,ay-23,8,8,pants);
+    px(ax+7,ay-23,8,8,pants);
+    px(ax-5,ay-15,8,12,pants);
+    px(ax+9,ay-15,8,12,pants);
+    px(ax-6,ay-3,9,3,shoe); px(ax+9,ay-3,9,3,shoe);
+  }
+  else if(pose==='ohstand'){
+    // 오버헤드 스탠드업 (락아웃 완성)
     head(ax, ay-52, 1);
     px(ax-1,ay-43,12,14,top);
     px(ax-1,ay-43,12,2,topD);
-    px(ax-4,ay-42,4,10,skin);
-    px(ax+9,ay-42,4,10,skin);
-    px(ax,ay-29,5,14,pants);
-    px(ax+6,ay-29,5,14,pants);
+    px(ax-4,ay-58,4,16,skin);
+    px(ax+9,ay-58,4,16,skin);
+    px(ax,ay-29,5,26,pants);
+    px(ax+6,ay-29,5,26,pants);
     px(ax-1,ay-3,7,3,shoe); px(ax+6,ay-3,7,3,shoe);
-  }
-  else if(pose==='overhead'){
-    // 오버헤드 캐치
-    head(ax, ay-48, 1);
-    px(ax-1,ay-39,12,12,top);
-    px(ax-1,ay-39,12,2,topD);
-    px(ax-4,ay-52,4,14,skin);
-    px(ax+9,ay-52,4,14,skin);
-    px(ax-2,ay-27,7,9,pants);
-    px(ax+7,ay-27,7,9,pants);
-    px(ax-3,ay-18,7,15,pants);
-    px(ax+8,ay-18,7,15,pants);
-    px(ax-4,ay-3,8,3,shoe); px(ax+8,ay-3,8,3,shoe);
   }
   else if(pose==='hang'){
     // 풀업바 매달림 (ay = 바 y)
@@ -293,18 +333,41 @@ function drawAthlete(ax, ay, pose){
     px(ax+5,ay+36-wobble,4,12,pants);
     px(ax-1,ay+48,6,3,shoe); px(ax+5,ay+48,6,3,shoe);
   }
+  else if(pose==='kip'){
+    // 킵 스윙: 몸 활처럼, 다리 뒤로
+    px(ax-3,ay+2,3,13,skin);
+    px(ax+9,ay+2,3,13,skin);
+    head(ax-3, ay+13, -1);
+    px(ax-2,ay+22,12,12,top);
+    px(ax-2,ay+22,12,2,topD);
+    px(ax+3,ay+34,5,10,pants);
+    px(ax+7,ay+42,5,8,pants);
+    px(ax+10,ay+48,6,3,shoe);
+    px(ax+4,ay+42,5,3,shoe);
+  }
   else if(pose==='pullup'){
-    // 치닝: 턱이 바 위
-    head(ax-1, ay-10, 1);
-    px(ax-4,ay-1,4,8,skin);
-    px(ax+9,ay-1,4,8,skin);
-    px(ax-1,ay-1,11,12,top);
-    px(ax,ay+11,4,10,pants);
-    px(ax+5,ay+11,4,10,pants);
-    px(ax-1,ay+21,6,3,shoe); px(ax+5,ay+21,6,3,shoe);
+    // 하이 풀: 가슴이 바 높이
+    head(ax-1, ay-8, 1);
+    px(ax-5,ay,5,6,skin);
+    px(ax+10,ay,5,6,skin);
+    px(ax-1,ay+1,11,12,top);
+    px(ax,ay+13,4,10,pants);
+    px(ax+5,ay+13,4,10,pants);
+    px(ax-1,ay+23,6,3,shoe); px(ax+5,ay+23,6,3,shoe);
+  }
+  else if(pose==='dip'){
+    // 트랜지션: 상체 바 위로, 팔꿈치 굽힘
+    head(ax-1, ay-18, -1);
+    px(ax-1,ay-9,11,11,top);
+    px(ax-1,ay-9,11,2,topD);
+    px(ax-5,ay-8,4,9,skin);
+    px(ax+10,ay-8,4,9,skin);
+    px(ax,ay+2,4,10,pants);
+    px(ax+5,ay+2,4,10,pants);
+    px(ax-1,ay+12,6,3,shoe); px(ax+5,ay+12,6,3,shoe);
   }
   else if(pose==='support'){
-    // 바 위 서포트
+    // 바 위 서포트 락아웃
     head(ax-1, ay-32, 1);
     px(ax-1,ay-23,11,13,top);
     px(ax-1,ay-23,11,2,topD);
@@ -314,8 +377,30 @@ function drawAthlete(ax, ay, pose){
     px(ax+5,ay-10,4,10,pants);
     px(ax-1,ay,6,3,shoe); px(ax+5,ay,6,3,shoe);
   }
+  else if(pose==='du'){
+    // 더블언더 (opt.jump: 0~1 점프 높이, opt.spin: 로프 회전)
+    const jy = ay - (opt&&opt.jump ? opt.jump*10 : 0);
+    head(ax, jy-48, 1);
+    px(ax-1,jy-39,12,13,top);
+    px(ax-1,jy-39,12,2,topD);
+    px(ax-4,jy-36,4,9,skin);
+    px(ax+9,jy-36,4,9,skin);
+    px(ax,jy-26,5,14,pants);
+    px(ax+6,jy-26,5,14,pants);
+    px(ax-1,jy-12,7,3,shoe); px(ax+6,jy-12,7,3,shoe);
+    // 줄넘기 로프
+    const spin = opt ? opt.spin : 0;
+    x.strokeStyle='#8be0d8'; x.lineWidth=1;
+    x.beginPath();
+    if((spin>>1)&1){  // 머리 위
+      x.arc(ax+5, jy-30, 26, Math.PI*1.05, Math.PI*1.95);
+    } else {          // 발 아래
+      x.arc(ax+5, jy-30, 26, Math.PI*0.05, Math.PI*0.95);
+    }
+    x.stroke();
+    px(ax-5,jy-30,2,3,'#f0c020'); px(ax+14,jy-30,2,3,'#f0c020');  // 손잡이
+  }
   else if(pose==='stumble'){
-    // 실패: 휘청
     head(ax+4+wobble, ay-46, -1);
     px(ax+2+wobble,ay-37,12,13,top);
     px(ax-2,ay-36,4,10,skin);
@@ -323,37 +408,60 @@ function drawAthlete(ax, ay, pose){
     px(ax+2,ay-24,5,11,pants);
     px(ax+8,ay-24,5,11,pants);
     px(ax+1,ay-3,7,3,shoe); px(ax+9,ay-3,7,3,shoe);
-    // 땀
-    px(ax+16,ay-50,2,3,'#8be0d8');
+    px(ax+16,ay-50,2,3,'#8be0d8');   // 땀
   }
 }
 
 // ---------- 동작 씬 ----------
-const AX = 200;           // 애슬릿 x
-const RIG_Y = 90;         // 풀업바 y
+const AX = 200;
+const RIG_Y = 100;
+const SCALE = 1.35;    // 동작 잘 보이게 확대
+
 function drawScene(){
   drawGym();
+  x.save();
+  x.translate(AX, FLOOR); x.scale(SCALE, SCALE); x.translate(-AX, -FLOOR);
+
+  const kg = curWeight();
 
   if(curMove==='snatch'){
     if(phase==='ready' || phase==='run'){
       drawAthlete(AX, FLOOR, 'setup');
-      drawBarbell(AX+13, FLOOR-8);
+      drawBarbell(AX+13, FLOOR-8, kg);
     } else {
       if(judgment && judgment.pts>0){
-        if(frame<10){ drawAthlete(AX, FLOOR, 'pull'); drawBarbell(AX+5, FLOOR-38); }
-        else { drawAthlete(AX, FLOOR, 'overhead'); drawBarbell(AX+5, FLOOR-58); }
+        // 풀 → 익스텐션 → 스쿼트 캐치 → 스탠드업, 바가 경로 따라 이동
+        if(frame<8){
+          drawAthlete(AX, FLOOR, 'pull');
+          drawBarbell(AX+8, FLOOR-8-(frame/8)*22, kg);       // 바닥→허벅지
+        } else if(frame<16){
+          drawAthlete(AX, FLOOR, 'extend');
+          drawBarbell(AX+5, FLOOR-30-((frame-8)/8)*34, kg);  // 허벅지→가슴 위
+        } else if(frame<28){
+          drawAthlete(AX, FLOOR, 'overhead');
+          drawBarbell(AX+5, FLOOR-52, kg);                   // 스쿼트 캐치
+        } else {
+          drawAthlete(AX, FLOOR, 'ohstand');
+          drawBarbell(AX+5, FLOOR-62-Math.min(8,(frame-28)), kg);  // 일어서기
+        }
       } else {
         drawAthlete(AX, FLOOR, 'stumble');
-        drawBarbell(AX+13, FLOOR-8);
+        drawBarbell(AX+13, FLOOR-8, kg);
       }
     }
-  } else { // bmu
+  }
+  else if(curMove==='bmu'){
     drawRig(AX+5, RIG_Y);
     if(phase==='ready' || phase==='run'){
-      drawAthlete(AX, RIG_Y, 'hang');
+      // 대기 중에도 살짝 스윙
+      const sw = Math.sin(t*0.1)*2;
+      drawAthlete(AX+sw, RIG_Y, 'hang');
     } else {
       if(judgment && judgment.pts>0){
-        if(frame<10) drawAthlete(AX, RIG_Y, 'pullup');
+        // 킵 → 하이풀 → 트랜지션 → 서포트
+        if(frame<10) drawAthlete(AX, RIG_Y, 'kip');
+        else if(frame<20) drawAthlete(AX, RIG_Y, 'pullup');
+        else if(frame<30) drawAthlete(AX, RIG_Y-2, 'dip');
         else drawAthlete(AX, RIG_Y-2, 'support');
       } else {
         drawAthlete(AX, RIG_Y, 'hang');
@@ -361,19 +469,36 @@ function drawScene(){
       }
     }
   }
+  else { // du
+    if(phase==='ready' || phase==='run'){
+      // 계속 콩콩 뛰면서 대기
+      const jump = Math.abs(Math.sin(t*0.18));
+      drawAthlete(AX, FLOOR, 'du', {jump:jump*0.4, spin:t>>2});
+    } else {
+      if(judgment && judgment.pts>0){
+        // 성공: 높은 점프 + 빠른 로프 스핀 (더블!)
+        const jp = Math.sin((frame/12)*Math.PI);
+        drawAthlete(AX, FLOOR, 'du', {jump:jp, spin:frame});
+      } else {
+        drawAthlete(AX, FLOOR, 'stumble');   // 줄 걸림
+        x.strokeStyle='#8be0d8'; x.lineWidth=1;
+        x.beginPath(); x.arc(AX+8, FLOOR-4, 12, 0, Math.PI); x.stroke();
+      }
+    }
+  }
+
+  x.restore();
 }
 
 // ---------- 타이밍 게이지 ----------
 function drawMeter(p){
-  const mx = 420, my = 40, mh = 170;
+  const mx = 430, my = 45, mh = 165;
   px(mx-2, my-2, 18, mh+4, '#2a2540');
   px(mx, my, 14, mh, '#14121c');
-  // 존 (아래→위 진행)
-  const yOf = q => my + mh - q*mh;
-  px(mx, yOf(GOOD_HI), 14, (GOOD_HI-GOOD_LO)*mh, '#2e6e5a');
-  px(mx, yOf(PERF_HI), 14, (PERF_HI-PERF_LO)*mh, '#ffd23f');
-  // 마커
-  const markY = yOf(Math.min(1,p));
+  const yOf = q => my + mh - Math.max(0,Math.min(1,q))*mh;
+  px(mx, yOf(zone.gHi), 14, (zone.gHi-zone.gLo)*mh, '#2e6e5a');
+  px(mx, yOf(zone.pHi), 14, (zone.pHi-zone.pLo)*mh, '#ffd23f');
+  const markY = yOf(p);
   px(mx-5, markY-2, 24, 4, '#ffffff');
   px(mx-5, markY-2, 24, 1, '#8be0d8');
   text('TIMING', mx+7, my-10, 8, '#7a7292');
@@ -387,14 +512,15 @@ function loop(){
 
   if(state==='title'){
     drawGym();
-    drawAthlete(140, FLOOR, 'overhead');
-    drawBarbell(145, FLOOR-58);
-    drawRig(320, RIG_Y);
-    drawAthlete(315, RIG_Y-2, 'support');
+    drawAthlete(120, FLOOR, 'ohstand');
+    drawBarbell(125, FLOOR-70, 40);
+    drawAthlete(240, FLOOR, 'du', {jump:Math.abs(Math.sin(t*0.15)), spin:t});
+    drawRig(370, RIG_Y);
+    drawAthlete(365, RIG_Y-2, 'support');
     x.fillStyle='rgba(0,0,0,0.55)'; x.fillRect(0,52,W,110);
     text('BIRTHDAY WOD', W/2, 92, 26, '#ffd23f');
     text('골드 존에서 클릭! 퍼펙트 판정을 노려라', W/2, 118, 11, '#f0ead8');
-    text('스내치 8 · 바 머슬업 8 · 콤보 라운드 10', W/2, 136, 10, '#8be0d8');
+    text('스내치 40kg · 바 머슬업 · 더블언더 · 스내치 60kg 콤보', W/2, 136, 10, '#8be0d8');
     if((t>>4)&1) text('▶ 클릭 또는 SPACE', W/2, 156, 12, '#8be0d8');
   }
 
@@ -402,12 +528,13 @@ function loop(){
     frame++;
     drawGym();
     const r = WOD[roundIdx];
-    x.fillStyle='rgba(0,0,0,0.55)'; x.fillRect(0,80,W,80);
+    x.fillStyle='rgba(0,0,0,0.55)'; x.fillRect(0,80,W,86);
     text('ROUND '+(roundIdx+1), W/2, 108, 14, '#8be0d8');
-    text(r.label+' × '+r.reps, W/2, 134, 20, '#ffd23f');
+    text(r.label+(r.weight&&r.move!=='alt'?' '+r.weight+'kg':'')+' × '+r.reps, W/2, 134, 20, '#ffd23f');
+    if(r.random) text('!! 판정 존이 랩마다 움직임 !!', W/2, 152, 10, '#ff9ec4');
     const cnt = 3 - (frame/30|0);
     if(frame%30===1 && cnt>0) sfx.count();
-    if(cnt>0) text(cnt+'', W/2, 154, 12, '#f0ead8');
+    if(cnt>0) text(cnt+'', W/2, 164, 12, '#f0ead8');
     if(frame>=90){ sfx.go(); state='play'; startRep(); updateHUD(); }
   }
 
@@ -416,41 +543,40 @@ function loop(){
     drawScene();
 
     if(phase==='ready'){
-      if((frame>>3)&1) text('READY...', AX+8, FLOOR-100, 11, '#7a7292');
-      if(frame>=32){ phase='run'; frame=0; }
+      if((frame>>3)&1) text('READY...', AX+8, 60, 11, '#7a7292');
+      if(frame>=readyDur()){ phase='run'; frame=0; }
     }
     else if(phase==='run'){
-      const p = frame/curDur();
+      const p = frame/repDur;
       drawMeter(p);
-      if(p>=1) judge(1.1);  // 안 눌렀으면 NO REP
+      if(p>=1) judge(1.1);
     }
     else if(phase==='result'){
-      if(frame>=42) nextRep();
+      if(frame>=resultDur()) nextRep();
     }
 
     if(combo>=2){
-      text(combo+' COMBO', 60, 70, 13, combo>=5?'#ffd23f':'#8be0d8');
+      text(combo+' COMBO', 60, 60, 13, combo>=5?'#ffd23f':'#8be0d8');
     }
   }
 
   else if(state==='done'){
     drawGym();
-    drawAthlete(140, FLOOR, 'overhead'); drawBarbell(145, FLOOR-58);
-    drawRig(330, RIG_Y); drawAthlete(325, RIG_Y-2, 'support');
-    x.fillStyle='rgba(0,0,0,0.72)'; x.fillRect(0,34,W,196);
+    drawAthlete(120, FLOOR, 'ohstand'); drawBarbell(125, FLOOR-70, 60);
+    drawRig(360, RIG_Y); drawAthlete(355, RIG_Y-2, 'support');
+    x.fillStyle='rgba(0,0,0,0.72)'; x.fillRect(0,34,W,200);
 
     const total = perfects+goods+misses;
     const rate = total? perfects/total : 0;
     const grade = rate>=0.85 ? "RX'D! 완벽한 애슬릿 ★" : rate>=0.55 ? '좋아! 폼 조금만 더!' : '스케일드... 재도전?';
 
-    text('WOD COMPLETE!', W/2, 66, 22, '#ffd23f');
-    text('SCORE  '+score, W/2, 96, 16, '#f0ead8');
-    text('PERFECT '+perfects+'  ·  GOOD '+goods+'  ·  NO REP '+misses, W/2, 120, 11, '#8be0d8');
-    text('MAX COMBO '+maxCombo, W/2, 138, 11, '#8be0d8');
-    text(grade, W/2, 166, 14, '#ff9ec4');
-    text('생일 축하해!', W/2, 192, 15, '#ffd23f');
-    if((t>>4)&1) text('▶ 클릭해서 다시 도전', W/2, 214, 10, '#7a7292');
-    // 하트
+    text('WOD COMPLETE!', W/2, 64, 22, '#ffd23f');
+    text('SCORE  '+score, W/2, 92, 16, '#f0ead8');
+    text('PERFECT '+perfects+'  ·  GOOD '+goods+'  ·  NO REP '+misses, W/2, 114, 11, '#8be0d8');
+    text('MAX COMBO '+maxCombo+'   ·   총 리프팅 '+tonnage+'kg', W/2, 132, 11, '#8be0d8');
+    text(grade, W/2, 162, 14, '#ff9ec4');
+    text('생일 축하해!', W/2, 190, 15, '#ffd23f');
+    if((t>>4)&1) text('▶ 클릭해서 다시 도전', W/2, 212, 10, '#7a7292');
     for(let i=0;i<3;i++){
       const hy = 230 - ((t*0.6+i*30)%60);
       const hx = 90 + i*150 + Math.sin(t*0.05+i)*6;
