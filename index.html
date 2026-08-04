@@ -254,7 +254,8 @@ function drawRig(rx, barY){
 // ---------- 애슬릿 (남자, 짧은 머리 + 은테 안경) ----------
 // pose: setup | pull | extend | overhead | ohstand | hang | kip | pullup | dip | support | du | stumble
 function drawAthlete(ax, ay, pose, opt){
-  const skin='#f2cba6', hair='#241d1a', top='#3b6ea5', topD='#2a5182',
+  // ponytail: 레알마드리드 24-25 어웨이 (주황 + 네이비 트림)
+  const skin='#f2cba6', hair='#241d1a', top='#f2803a', topD='#1e2a52',
         pants='#2e2a3d', shoe='#f0a838';
   const wobble = (pose==='stumble') ? Math.sin(t*0.6)*2 : 0;
 
