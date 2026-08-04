@@ -1097,6 +1097,10 @@ function drawRunScene(){
   drawAthlete(90, 356, 'runp', {f:(runDist*1.6|0)&1});
   x.restore();
 
+  // 치즈도 뒤에서 총총 따라옴
+  drawCheeseRun(40, 356, (runDist*2.2|0)&1);
+  if((t%450)<130) text('냐아아앙--', 44, 330, 8, '#2e3a22');
+
   // 거리 + 속도 게이지
   const total = WOD[roundIdx].reps*25;
   text(Math.min(total,runDist|0)+'m / '+total+'m', 50, 384, 10, '#f0ead8', 'left');
@@ -1110,6 +1114,26 @@ function drawRunScene(){
   if(btnFlash.L>0)btnFlash.L--;
   if(btnFlash.R>0)btnFlash.R--;
 }
+// 치즈 달리기 (러너 게임 원작 포즈)
+function drawCheeseRun(cx, cy, f){
+  const wht='#fbf6ee', org='#d98b45', orgL='#eda85f';
+  const tw = Math.sin(t*0.25)*2;
+  px(cx-8,cy-9+tw,3,3,org);            // 꼬리
+  px(cx-10,cy-12+tw,3,3,orgL);
+  px(cx-4,cy-10,14,7,wht);             // 몸통
+  px(cx-3,cy-10,5,3,org);              // 등 얼룩
+  px(cx+3,cy-9,4,2,org);
+  px(cx+8,cy-14,9,7,wht);              // 머리
+  px(cx+13,cy-14,4,3,org);             // 얼굴 오른쪽 무늬
+  px(cx+8,cy-16,3,3,org);              // 귀
+  px(cx+14,cy-16,3,3,org);
+  px(cx+10,cy-11,2,2,'#2a2a2a');       // 눈
+  px(cx+14,cy-11,2,2,'#2a2a2a');
+  px(cx+12,cy-9,2,1,'#f0a8ae');        // 코
+  if(f){ px(cx-2,cy-3,3,3,wht); px(cx+6,cy-3,3,2,wht); }   // 다리 총총
+  else { px(cx-2,cy-3,3,2,wht); px(cx+6,cy-3,3,3,wht); }
+}
+
 function runSegJudge(){
   let res;
   if(segFrames<95){
