@@ -235,9 +235,12 @@ function action(e){
   if(state==='title'){
     if(e){
       const {my} = canvasPos(e);
-      if(my>=212&&my<=228){ rename(); return; }   // 이름 변경
-      if(my>228&&my<=246){                        // 캐릭터 전환
-        charSel = charSel==='F' ? 'M' : 'F';
+      if(my>=212&&my<=226){ rename(); return; }   // 이름 변경
+      if(my>=228&&my<=252){                       // 캐릭터 선택 버튼
+        const {mx} = canvasPos(e);
+        if(mx>=70&&mx<=130){ charSel='M'; }
+        else if(mx>=140&&mx<=200){ charSel='F'; }
+        else return;
         try{ localStorage.setItem('wodChar', charSel); }catch(_){}
         sfx.count();
         return;
@@ -1432,7 +1435,7 @@ function loop(){
     drawAthlete(AX, FLOOR, 'ohstand');
     drawBarbell(AX+6, FLOOR-59, 95);
     x.restore();
-    x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,186);   // 텍스트만 커버, 선수는 안 가리게
+    x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,196);   // 텍스트만 커버, 선수는 안 가리게
     text('BIRTHDAY', W/2, 100, 26, '#ffd23f');
     text('WOD', W/2, 130, 26, '#ffd23f');
     text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 156, 10, '#f0ead8');
@@ -1441,7 +1444,13 @@ function loop(){
     const bs = bestScore();
     if(bs>0) text('최고 기록 '+bs, W/2, 206, 10, '#ffd23f');
     text('선수: '+playerName+'  (탭해서 변경)', W/2, 220, 9, '#8be0d8');
-    text('캐릭터: '+(charSel==='F'?'여자 ♀':'남자 ♂')+'  (탭해서 변경)', W/2, 236, 9, '#ff9ec4');
+    // 캐릭터 선택 버튼
+    px(70,228,60,22, charSel==='M'?'#6e2438':'#221e30');
+    px(70,228,60,2,  charSel==='M'?'#ffd23f':'#4a4468');
+    text('♂ 남자', 100, 243, 10, charSel==='M'?'#ffd23f':'#7a7292');
+    px(140,228,60,22, charSel==='F'?'#6e2438':'#221e30');
+    px(140,228,60,2,  charSel==='F'?'#ffd23f':'#4a4468');
+    text('♀ 여자', 170, 243, 10, charSel==='F'?'#ffd23f':'#7a7292');
     // 선수 말풍선
     const bob2 = Math.sin(t*0.06)*2;
     px(158,262+bob2,100,24,'#f6f6f2');
