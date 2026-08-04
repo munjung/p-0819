@@ -196,7 +196,7 @@ function action(e){
   if(state==='title'){
     if(e){
       const {my} = canvasPos(e);
-      if(my>=222&&my<=246){ rename(); return; }   // 이름 변경
+      if(my>=212&&my<=232){ rename(); return; }   // 이름 변경
     }
     state='build'; t=0;
     return;
@@ -1083,15 +1083,15 @@ function loop(){
     drawAthlete(AX, FLOOR, 'ohstand');
     drawBarbell(AX+6, FLOOR-59, 95);
     x.restore();
-    x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,192);   // 최고기록·선수명까지 커버
+    x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,168);   // 텍스트만 커버, 선수는 안 가리게
     text('BIRTHDAY', W/2, 100, 26, '#ffd23f');
     text('WOD', W/2, 130, 26, '#ffd23f');
     text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 156, 10, '#f0ead8');
     text('스내치·월볼·머슬업·더블언더·클린&저크', W/2, 172, 10, '#8be0d8');
     if((t>>4)&1) text('▶ 탭해서 WOD 짜러 가기', W/2, 192, 12, '#8be0d8');
     const bs = bestScore();
-    if(bs>0) text('최고 기록 '+bs, W/2, 214, 10, '#ffd23f');
-    text('선수: '+playerName+'  (탭해서 변경)', W/2, 236, 9, '#8be0d8');
+    if(bs>0) text('최고 기록 '+bs, W/2, 206, 10, '#ffd23f');
+    text('선수: '+playerName+'  (탭해서 변경)', W/2, 220, 9, '#8be0d8');
   }
 
   else if(state==='build'){
