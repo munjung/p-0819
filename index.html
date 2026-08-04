@@ -1250,10 +1250,36 @@ function loop(){
 
     // RX'D 이벤트 경고
     if(repEvent && (phase==='ready'||phase==='run')){
-      const evTxt = repEvent==='judge' ? '!! 저지 주목: PERFECT만 인정 !!' : '!! 존 암기: 중간에 사라짐 !!';
-      const evCol = repEvent==='judge' ? '#ff5a5a' : '#8be0d8';
-      text(evTxt, W/2+1, 137, 9, '#00000077');
-      text(evTxt, W/2, 136, 9, evCol);
+      if(repEvent==='judge'){
+        // 비상등: 화면 테두리 붉은 펄스
+        x.fillStyle = 'rgba(255,60,60,'+(0.10+0.06*Math.sin(t*0.35))+')';
+        x.fillRect(0,44,W,5); x.fillRect(0,H-5,W,5);
+        x.fillRect(0,44,5,H-44); x.fillRect(W-5,44,5,H-44);
+        // 경고 문구 빨강↔노랑 점멸
+        const evCol = (t>>3)&1 ? '#ff5a5a' : '#ffd23f';
+        text('!! 저지 주목: PERFECT만 인정 !!', W/2+1, 137, 9, '#00000077');
+        text('!! 저지 주목: PERFECT만 인정 !!', W/2, 136, 9, evCol);
+        // 매의 눈: 게이지 마커를 따라 동공 이동
+        const off = phase==='run'
+          ? Math.max(-10, Math.min(10, (frame/repDur-0.5)*22))
+          : Math.sin(t*0.06)*6;
+        const ex=W/2, ey=156;
+        if((t%180)<6){                          // 가끔 깜빡
+          px(ex-16,ey-2,32,4,'#2a2340');
+        } else {
+          px(ex-16,ey-6,32,12,'#f4f4f0');       // 흰자
+          px(ex-16,ey-6,32,3,'#2a2340');        // 매서운 일자 눈꺼풀
+          px(ex-19,ey-8,11,3,'#2a2340');        // 눈초리
+          px(ex+8,ey-8,11,3,'#2a2340');
+          px(ex-16,ey+4,32,2,'#2a2340');
+          px(ex-6+off,ey-4,10,9,'#c9922a');     // 황금 홍채 (매)
+          px(ex-3+off,ey-2,5,5,'#1a1a1a');      // 동공
+          px(ex-2+off,ey-1,2,2,'#ffffff');
+        }
+      } else {
+        text('!! 존 암기: 중간에 사라짐 !!', W/2+1, 137, 9, '#00000077');
+        text('!! 존 암기: 중간에 사라짐 !!', W/2, 136, 9, '#8be0d8');
+      }
     }
     else if(phase==='run'){
       const p = frame/repDur;
