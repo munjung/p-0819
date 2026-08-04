@@ -66,6 +66,7 @@ let repsOverride = {};     // 빌더 랩 수 커스텀 {MOVES idx: reps}
 let wMode = 'rx';          // 'rx' | 'scaled' (스케일드: 바벨 -20lb, 월볼 -6lb)
 let mode = 'fortime';      // 'fortime' | 'amrap'
 let amrapLeft = 0;         // AMRAP 남은 프레임
+let amrapSecs = 60;        // AMRAP 제한 시간 (60/120/180 토글)
 let wodTime = 0;           // FOR TIME 경과 프레임
 let timeCap = 0;           // FOR TIME 제한 (프레임)
 let timeCapped = false;    // 타임캡 걸려서 종료됐는지
@@ -84,7 +85,7 @@ const BADGES = [
   { id:'nomiss',     name:'노 미스',    test:s=>s.total>0 && s.misses===0 },
   { id:'club500',    name:'500LB 클럽', test:s=>s.tonnage>=500 },
   { id:'combo10',    name:'10 콤보',    test:s=>s.maxCombo>=10 },
-  { id:'amrap30',    name:'AMRAP 30렙', test:s=>s.amrap && (s.perfects+s.goods)>=30 },
+  { id:'amrap30',    name:'렙 머신', test:s=>s.amrap && (s.perfects+s.goods)>=s.amrapSecs/2 },   // 초당 0.5렙 페이스
 ];
 let doneBadges = [], newBadgeIds = [];
 
@@ -162,7 +163,7 @@ function launchWOD(){
   const pickList = buildSel.length ? buildSel : MOVES.map((_,i)=>i);
   WOD = pickList.map(i=>({ ...MOVES[i], reps: customReps(i) }));
   startWOD();
-  if(mode==='amrap') amrapLeft = 60*60;   // 60초
+  if(mode==='amrap') amrapLeft = amrapSecs*60;
   else {
     // FOR TIME 타임캡: 랩당 5초 + 라운드당 3초
     const totalReps = WOD.reduce((a,m)=>a+m.reps,0);
@@ -187,7 +188,12 @@ function buildTap(e){
     if(mx>=22&&mx<70)        { wMode='scaled'; sfx.count(); }
     else if(mx>=70&&mx<=120) { wMode='rx';     sfx.count(); }
     else if(mx>=150&&mx<206) { mode='fortime'; sfx.count(); }
-    else if(mx>=206&&mx<=248){ mode='amrap';   sfx.count(); }
+    else if(mx>=206&&mx<=248){
+      // 이미 AMRAP이면 다시 탭할 때마다 시간 순환 (60→120→180)
+      if(mode==='amrap') amrapSecs = amrapSecs>=180 ? 60 : amrapSecs+60;
+      else mode='amrap';
+      sfx.count();
+    }
     return;
   }
   const rowH=32, top=112;
@@ -262,7 +268,7 @@ function buildShareCard(){
   text(gi.grade, 135, 122, 11, '#ff9ec4');
   text('PERFECT '+perfects+' · GOOD '+goods+' · NO REP '+misses, 135, 144, 9, '#8be0d8');
   text((wMode==='scaled'?'SCALED · ':"RX'D · ")+(mode==='amrap'
-    ? 'AMRAP 60초 · 총 '+(perfects+goods)+'렙'
+    ? 'AMRAP '+amrapSecs+'초 · 총 '+(perfects+goods)+'렙'
     : 'TIME '+fmtTime(wodTime)+' · 총 '+tonnage+'lb'), 135, 160, 9, '#8be0d8');
   if(doneBadges.length){
     const sx0 = 135 - doneBadges.length*26;
@@ -415,7 +421,7 @@ function finishWOD(){
   isNewBest = score > bestScore();
   if(isNewBest){ try{ localStorage.setItem('wodBest', score); }catch(_){} }
   // 업적 평가 + 저장
-  const stats = { perfects, goods, misses, total:perfects+goods+misses, tonnage, maxCombo, amrap:mode==='amrap' };
+  const stats = { perfects, goods, misses, total:perfects+goods+misses, tonnage, maxCombo, amrap:mode==='amrap', amrapSecs };
   doneBadges = BADGES.filter(b=>b.test(stats));
   let owned=[]; try{ owned=JSON.parse(localStorage.getItem('wodBadges')||'[]'); }catch(_){}
   newBadgeIds = doneBadges.map(b=>b.id).filter(id=>!owned.includes(id));
@@ -1160,7 +1166,7 @@ function loop(){
     text('FOR TIME', 178, 96, 8, mode==='fortime'?'#ffd23f':'#7a7292');
     px(206,80,42,24, mode==='amrap'?'#3d3355':'#221e30');
     px(206,80,42,2, mode==='amrap'?'#ffd23f':'#4a4468');
-    text('AMRAP', 227, 96, 8, mode==='amrap'?'#ffd23f':'#7a7292');
+    text(mode==='amrap' ? amrapSecs+'초' : 'AMRAP', 227, 96, 8, mode==='amrap'?'#ffd23f':'#7a7292');
     // 종목 리스트
     MOVES.forEach((m,i)=>{
       const ry = 112 + i*32;
@@ -1190,7 +1196,7 @@ function loop(){
     px(148,352,102,38, canGo?'#6e2438':'#221e30');
     px(148,352,102,3, canGo?'#ffd23f':'#4a4468');
     text('시작!', 199, 376, 12, canGo?'#ffd23f':'#5a5570');
-    text((mode==='amrap'?'AMRAP 60초':'FOR TIME')+' · '+(wMode==='scaled'?'스케일드':"RX'D")
+    text((mode==='amrap'?'AMRAP '+amrapSecs+'초 (버튼 재탭=시간 변경)':'FOR TIME')+' · '+(wMode==='scaled'?'스케일드':"RX'D")
       +(canGo?' · '+buildSel.length+'라운드':''), W/2, 410, 9, '#8be0d8');
   }
 
@@ -1331,7 +1337,7 @@ function loop(){
     if(isNewBest && (t>>3)&1) text('NEW RECORD!', W/2, 116, 9, '#ffd23f');
     text('PERFECT '+perfects+' · GOOD '+goods+' · NO REP '+misses, W/2, 130, 9, '#8be0d8');
     if(mode==='amrap'){
-      text('AMRAP 60초 · 총 '+(perfects+goods)+'렙', W/2, 145, 9, '#8be0d8');
+      text('AMRAP '+amrapSecs+'초 · 총 '+(perfects+goods)+'렙', W/2, 145, 9, '#8be0d8');
     } else {
       text('TIME '+fmtTime(wodTime)+' · '+tonnage+'lb', W/2, 146, 12, '#ffd23f');
       if(isNewTime){ if((t>>3)&1) text('최단 기록 갱신!', W/2, 158, 8, '#ff9ec4'); }
