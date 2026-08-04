@@ -49,10 +49,10 @@ const FLOOR = 360;
 // ---------- WOD 정의 ----------
 // pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
 const WOD = [
-  { move:'snatch', label:'스내치',           weight:40, reps:8,  dur:92, pw:0.045, gw:0.105, random:false },
-  { move:'bmu',    label:'바 머슬업',         weight:0,  reps:8,  dur:78, pw:0.040, gw:0.100, random:true  },
-  { move:'du',     label:'더블언더',          weight:0,  reps:16, dur:34, pw:0.050, gw:0.110, random:false },
-  { move:'alt',    label:'스내치 60kg + 머슬업', weight:60, reps:10, dur:62, pw:0.032, gw:0.085, random:true  },
+  { move:'snatch', label:'스내치',           weight:95,  reps:8,  dur:92, pw:0.045, gw:0.105, random:false },
+  { move:'bmu',    label:'바 머슬업',         weight:0,   reps:8,  dur:78, pw:0.040, gw:0.100, random:true  },
+  { move:'du',     label:'더블언더',          weight:0,   reps:16, dur:34, pw:0.050, gw:0.110, random:false },
+  { move:'alt',    label:'스내치 135lb + 머슬업', weight:135, reps:10, dur:62, pw:0.032, gw:0.085, random:true  },
 ];
 
 let state = 'title';   // title | intro | play | done
@@ -219,16 +219,16 @@ function drawGym(){
   for(let i=0;i<46;i++){
     px((i*37)%W, 96+((i*53)%(FLOOR-110)), 3, 1, i%3===0?'#b8945a':'#d8bc80');
   }
-  // CROSSFIT ARCADE 로고 벽화 (가운데)
-  px(140,124,16,3,'#3a3a3a');                  // 케틀벨 핸들
-  px(138,126,3,9,'#3a3a3a'); px(155,126,3,9,'#3a3a3a');
-  px(136,134,24,18,'#3a3a3a');                 // 몸통 테두리
-  px(138,136,20,14,'#c8c8cc');                 // 회색 몸통
-  px(141,138,6,4,'#eeeef2');                   // 하이라이트
-  px(96,145,52,10,'#1a1a1a');                  // CROSSFIT 검정 배너
-  text('CROSSFIT', 122, 153, 8, '#f0f0f0');
-  text('ARCADE', 137, 173, 20, '#1a1a1a');     // 블록 레터 외곽
-  text('ARCADE', 135, 171, 20, '#f0c020');     // 노랑
+  // CROSSFIT ARCADE 로고 벽화 (가운데 아래쪽)
+  px(140,184,16,3,'#3a3a3a');                  // 케틀벨 핸들
+  px(138,186,3,9,'#3a3a3a'); px(155,186,3,9,'#3a3a3a');
+  px(136,194,24,18,'#3a3a3a');                 // 몸통 테두리
+  px(138,196,20,14,'#c8c8cc');                 // 회색 몸통
+  px(141,198,6,4,'#eeeef2');                   // 하이라이트
+  px(96,205,52,10,'#1a1a1a');                  // CROSSFIT 검정 배너
+  text('CROSSFIT', 122, 213, 8, '#f0f0f0');
+  text('ARCADE', 137, 233, 20, '#1a1a1a');     // 블록 레터 외곽
+  text('ARCADE', 135, 231, 20, '#f0c020');     // 노랑
   // 배경 리그 (흰 기둥 + 파랑 크로스바)
   px(0,108,W,4,'#3a6ad4'); px(0,108,W,1,'#6a94e8');
   for(let i=0;i<3;i++){
@@ -249,8 +249,8 @@ function drawGym(){
   px(0,FLOOR,W,2,'#3a3a40');
   for(let i=0;i<5;i++) px(i*60,FLOOR,1,H-FLOOR,'#2e2e33');
   px(0,FLOOR+40,W,1,'#2e2e33');
-  // 컬러 범퍼 플레이트 스택 (오른쪽)
-  const stackCols=['#e8c22a','#4ea84a','#3a3a40','#e8c22a','#4ea84a'];
+  // 컬러 범퍼 플레이트 스택 (45lb파랑/35lb노랑/25lb초록/15lb회색/10lb검정)
+  const stackCols=['#2a6ad4','#e8c22a','#4ea84a','#9a9aa2','#1e1e22'];
   for(let s=0;s<2;s++){
     for(let k=0;k<5;k++){
       px(216+s*22, FLOOR-6-k*6, 20, 5, stackCols[(k+s)%5]);
@@ -263,18 +263,17 @@ function drawGym(){
   px(58,FLOOR-12,10,12,'#3a6ad4');
 }
 
-// ---------- 바벨 (무게 표시 + 60kg는 플레이트 2장) ----------
-function drawBarbell(bx, by, kg){
-  const heavy = kg>=50;
-  px(bx-38,by-10,10,20,'#c94f5a'); px(bx-36,by-6,6,12,'#a83a45');
-  px(bx+28,by-10,10,20,'#c94f5a'); px(bx+30,by-6,6,12,'#a83a45');
-  if(heavy){  // 파란 플레이트 추가
-    px(bx-46,by-9,8,18,'#4f7cc9'); px(bx-44,by-5,4,10,'#3a5f9e');
-    px(bx+38,by-9,8,18,'#4f7cc9'); px(bx+40,by-5,4,10,'#3a5f9e');
-  }
-  px(bx-28,by-2,56,4,'#b8bcc8');
-  px(bx-28,by-2,56,1,'#e0e4ec');
-  if(kg) text(kg+'kg', bx, by-16, 9, '#1e2a52');
+// ---------- 바벨 (95lb=초록 25s, 135lb=파랑 45s) ----------
+function drawBarbell(bx, by, lb){
+  const heavy = lb>=115;
+  const plate  = heavy ? '#2a6ad4' : '#4ea84a';
+  const plateD = heavy ? '#1e4fa8' : '#3a8438';
+  const ph = heavy ? 20 : 16;
+  px(bx-36,by-ph/2,9,ph,plate);  px(bx-34,by-ph/2+3,5,ph-6,plateD);
+  px(bx+27,by-ph/2,9,ph,plate);  px(bx+29,by-ph/2+3,5,ph-6,plateD);
+  px(bx-27,by-1,54,2,'#6a6a72');           // 얇고 어두운 샤프트
+  px(bx-27,by-1,54,1,'#8a8a92');
+  if(lb) text(lb+'lb', bx, by-15, 9, '#1e2a52');
 }
 
 // ---------- 풀업 리그 ----------
@@ -482,7 +481,7 @@ function drawAthlete(ax, ay, pose, opt){
 
 // ---------- 동작 씬 ----------
 const AX = 128;
-const RIG_Y = 190;
+const RIG_Y = 230;   // 철봉 높이 (배경 배너와 안 겹치게 낮춤)
 const SCALE = 1.7;    // 동작 잘 보이게 확대
 
 function drawScene(){
@@ -583,7 +582,7 @@ function loop(){
     x.save();
     x.translate(AX, FLOOR); x.scale(SCALE, SCALE); x.translate(-AX, -FLOOR);
     drawAthlete(AX, FLOOR, 'ohstand');
-    drawBarbell(AX+5, FLOOR-70, 40);
+    drawBarbell(AX+5, FLOOR-70, 95);
     x.restore();
     x.fillStyle='rgba(0,0,0,0.55)'; x.fillRect(0,60,W,140);
     text('BIRTHDAY', W/2, 100, 26, '#ffd23f');
@@ -599,7 +598,7 @@ function loop(){
     const r = WOD[roundIdx];
     x.fillStyle='rgba(0,0,0,0.55)'; x.fillRect(0,140,W,110);
     text('ROUND '+(roundIdx+1), W/2, 168, 13, '#8be0d8');
-    text(r.label+(r.weight&&r.move!=='alt'?' '+r.weight+'kg':''), W/2, 194, 15, '#ffd23f');
+    text(r.label+(r.weight&&r.move!=='alt'?' '+r.weight+'lb':''), W/2, 194, 15, '#ffd23f');
     text('× '+r.reps, W/2, 214, 12, '#ffd23f');
     if(r.random) text('!! 판정 존이 랩마다 움직임 !!', W/2, 232, 9, '#ff9ec4');
     const cnt = 3 - (frame/30|0);
@@ -636,7 +635,7 @@ function loop(){
     x.save();
     x.translate(AX, FLOOR); x.scale(SCALE, SCALE); x.translate(-AX, -FLOOR);
     drawAthlete(AX, FLOOR, 'ohstand');
-    drawBarbell(AX+5, FLOOR-70, 60);
+    drawBarbell(AX+5, FLOOR-70, 135);
     x.restore();
     x.fillStyle='rgba(0,0,0,0.75)'; x.fillRect(0,52,W,260);
 
@@ -648,7 +647,7 @@ function loop(){
     text('SCORE  '+score, W/2, 118, 15, '#f0ead8');
     text('PERFECT '+perfects+' · GOOD '+goods, W/2, 144, 10, '#8be0d8');
     text('NO REP '+misses+' · MAX COMBO '+maxCombo, W/2, 160, 10, '#8be0d8');
-    text('총 리프팅 '+tonnage+'kg', W/2, 176, 10, '#8be0d8');
+    text('총 리프팅 '+tonnage+'lb', W/2, 176, 10, '#8be0d8');
     text(grade, W/2, 208, 12, '#ff9ec4');
     text('생일 축하해!', W/2, 238, 15, '#ffd23f');
     if((t>>4)&1) text('▶ 탭해서 다시 도전', W/2, 266, 10, '#7a7292');
