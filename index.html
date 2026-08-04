@@ -580,11 +580,15 @@ function drawAthlete(ax, ay, pose, opt){
     jerseyF(-2,-82,24,26);
     L(-8,-96,8,14,skin);   L(-12,-114,8,20,skin);
     L(20,-96,8,14,skin);   L(24,-114,8,20,skin);
-    L(8,-56,12,12,shorts); L(8,-46,12,2,shortsD);   // 앞 허벅지
-    L(14,-44,8,20,skin);   L(14,-24,8,18,sock);     // 앞다리
-    footF(12,-6,18);
-    L(-14,-52,12,10,shorts);                        // 뒤 허벅지 (뒤로 뻗음)
-    L(-20,-44,8,16,skin);  L(-24,-28,8,16,sock);
+    // 앞다리: 무릎 앞으로 굽힘 (런지)
+    L(10,-52,18,10,shorts); L(10,-44,18,2,shortsD);  // 허벅지 수평 전방
+    L(22,-42,8,18,skin);                             // 무릎 아래 수직
+    L(22,-24,8,18,sock);
+    footF(20,-6,18);
+    // 뒷다리: 뒤로 뻗어 대각선
+    L(-8,-52,14,10,shorts);
+    L(-14,-44,8,16,skin);
+    L(-22,-30,8,24,sock);
     footF(-26,-6,16);
   }
   else if(pose==='du'){
@@ -730,9 +734,9 @@ function drawScene(){
   else if(curMove==='bmu'){
     drawRig(AX+5, RIG_Y);
     if(phase==='ready' || phase==='run'){
-      // 대기 중 스윙: 할로우 ↔ 아치 왕복
-      const sw = Math.sin(t*0.1);
-      const swingPose = sw>0.35 ? 'kip' : (sw<-0.35 ? 'hollow' : 'hang');
+      // 대기 중 스윙: 할로우 ↔ 아치 왕복 (천천히)
+      const sw = Math.sin(t*0.045);
+      const swingPose = sw>0.4 ? 'kip' : (sw<-0.4 ? 'hollow' : 'hang');
       drawAthlete(AX+sw*3, RIG_Y, swingPose);
     } else {
       if(judgment && judgment.pts>0){
