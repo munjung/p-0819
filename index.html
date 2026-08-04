@@ -804,25 +804,26 @@ function drawScene(){
     }
   }
   else if(curMove==='bmu'||curMove==='rmu'){
-    if(curMove==='rmu') drawRingsStation(AX, RIG_Y);
-    else drawRig(AX+5, RIG_Y);
+    const gy = curMove==='rmu' ? 268 : RIG_Y;   // 링은 철봉보다 낮게
+    if(curMove==='rmu') drawRingsStation(AX, gy);
+    else drawRig(AX+5, gy);
     if(phase==='ready' || phase==='run'){
       // 대기 중 스윙: 할로우 ↔ 아치 왕복 (천천히)
       const sw = Math.sin(t*0.045);
       const swingPose = sw>0.4 ? 'kip' : (sw<-0.4 ? 'hollow' : 'hang');
-      drawAthlete(AX+sw*3, RIG_Y, swingPose);
+      drawAthlete(AX+sw*3, gy, swingPose);
     } else {
       if(judgment && judgment.pts>0){
         // 할로우 → 아치 → 힙드라이브 → 하이풀 → 트랜지션 → 서포트
-        if(frame<8) drawAthlete(AX, RIG_Y, 'hollow');
-        else if(frame<16) drawAthlete(AX, RIG_Y, 'kip');
-        else if(frame<26) drawAthlete(AX, RIG_Y, 'hipdrive');
-        else if(frame<36) drawAthlete(AX, RIG_Y, 'pullup');
-        else if(frame<46) drawAthlete(AX, RIG_Y-2, 'dip');
-        else drawAthlete(AX, RIG_Y-2, 'support');
+        if(frame<8) drawAthlete(AX, gy, 'hollow');
+        else if(frame<16) drawAthlete(AX, gy, 'kip');
+        else if(frame<26) drawAthlete(AX, gy, 'hipdrive');
+        else if(frame<36) drawAthlete(AX, gy, 'pullup');
+        else if(frame<46) drawAthlete(AX, gy-2, 'dip');
+        else drawAthlete(AX, gy-2, 'support');
       } else {
-        drawAthlete(AX, RIG_Y, 'hang');
-        if((frame>>2)&1) text('!', AX+22, RIG_Y+18, 12, '#ff5a5a');
+        drawAthlete(AX, gy, 'hang');
+        if((frame>>2)&1) text('!', AX+22, gy+18, 12, '#ff5a5a');
       }
     }
   }
