@@ -49,10 +49,11 @@ const FLOOR = 360;
 // ---------- WOD 정의 ----------
 // pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
 const WOD = [
-  { move:'snatch', label:'스내치',           weight:95,  reps:8,  dur:92, pw:0.045, gw:0.105, random:false },
-  { move:'bmu',    label:'바 머슬업',         weight:0,   reps:8,  dur:78, pw:0.040, gw:0.100, random:true  },
-  { move:'du',     label:'더블언더',          weight:0,   reps:16, dur:34, pw:0.050, gw:0.110, random:false },
-  { move:'alt',    label:'스내치 135lb + 머슬업', weight:135, reps:10, dur:62, pw:0.032, gw:0.085, random:true  },
+  // ponytail: 테스트용 랩 수 (정식: 8/8/16/10)
+  { move:'snatch', label:'스내치',           weight:95,  reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
+  { move:'bmu',    label:'바 머슬업',         weight:0,   reps:3,  dur:78, pw:0.040, gw:0.100, random:true  },
+  { move:'du',     label:'더블언더',          weight:0,   reps:3,  dur:34, pw:0.050, gw:0.110, random:false },
+  { move:'alt',    label:'스내치 135lb + 머슬업', weight:135, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
 ];
 
 let state = 'title';   // title | intro | play | done
@@ -236,16 +237,16 @@ function drawGym(){
     px(28+i*88,100,6,10,'#3a6ad4');
     px(29+i*88,112,4,1,'#b8b5ac');
   }
+  // 월볼샷 타겟: 기둥-크로스바 교차점에 설치
+  x.fillStyle='#2a2622';
+  x.beginPath(); x.arc(207,110,9,0,Math.PI*2); x.fill();
+  x.fillStyle='#e8453a';
+  x.beginPath(); x.arc(207,110,3,0,Math.PI*2); x.fill();
   // 짐내스틱 링 (스트랩 + 나무 링)
   px(70,112,2,34,'#dcd9d0');
   x.strokeStyle='#b8945a'; x.lineWidth=2;
   x.beginPath(); x.arc(71,152,6,0,Math.PI*2); x.stroke();
-  // 월볼샷 타겟 (오른쪽 기둥) + 메디신볼
-  x.fillStyle='#2a2622';
-  x.beginPath(); x.arc(231,148,8,0,Math.PI*2); x.fill();
-  x.fillStyle='#e8453a';
-  x.beginPath(); x.arc(231,148,3,0,Math.PI*2); x.fill();
-  px(228,156,6,3,'#2a2622');                   // 타겟 브라켓
+  // 메디신볼
   x.fillStyle='#8a3a3a';                       // 메디신볼 (기둥 아래)
   x.beginPath(); x.arc(140,FLOOR-6,6,0,Math.PI*2); x.fill();
   px(135,FLOOR-8,10,1,'#6a2a2a');
@@ -374,8 +375,10 @@ function drawAthlete(ax, ay, pose, opt){
     // 스내치 스타트: 딥 스쿼트, 와이드 그립
     headF(4,-80);
     jerseyF(-2,-62,24,22);
-    L(-8,-56,8,14,skin);  L(-14,-45,8,14,skin);  L(-20,-33,8,17,skin);   // 왼팔 대각
-    L(20,-56,8,14,skin);  L(26,-45,8,14,skin);   L(32,-33,8,17,skin);    // 오른팔 대각
+    for(let k=0;k<5;k++){                       // 어깨→바깥 그립, 촘촘한 대각선
+      L(-8-3*k,-56+8*k,8,12,skin);              // 왼팔
+      L(20+3*k,-56+8*k,8,12,skin);              // 오른팔
+    }
     L(-6,-44,24,15,shorts);                   // 엉덩이~허벅지
     L(-6,-31,24,2,shortsD);
     L(12,-26,8,8,skin);  L(12,-18,8,12,sock);  // 앞 정강이
@@ -401,8 +404,8 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='overhead'){
     headF(0,-84);
     jerseyF(-2,-66,24,20);
-    L(-14,-96,8,32,skin);                      // 와이드 락아웃
-    L(24,-96,8,32,skin);
+    L(-10,-80,8,16,skin);  L(-18,-98,8,20,skin);   // 와이드 락아웃 (V자, 스타트 그립 폭)
+    L(22,-80,8,16,skin);   L(30,-98,8,20,skin);
     L(-6,-46,16,16,shorts);  L(14,-46,16,16,shorts);   // 스쿼트 허벅지
     L(-6,-32,16,2,shortsD);  L(14,-32,16,2,shortsD);
     L(-10,-30,16,10,skin);   L(18,-30,16,10,skin);
@@ -412,8 +415,8 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='ohstand'){
     headF(0,-104);
     jerseyF(-2,-86,24,28);
-    L(-14,-116,8,32,skin);                     // 와이드 락아웃
-    L(24,-116,8,32,skin);
+    L(-10,-100,8,16,skin);  L(-18,-118,8,20,skin); // 와이드 락아웃 (V자, 스타트 그립 폭)
+    L(22,-100,8,16,skin);   L(30,-118,8,20,skin);
     legF(0,-58,10,52); legF(12,-58,10,52);
     footF(-2,-6,14); footF(12,-6,14);
   }
