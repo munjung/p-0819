@@ -49,10 +49,12 @@ const FLOOR = 360;
 // ---------- WOD 정의 ----------
 // pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
 const WOD = [
-  // ponytail: 테스트용 랩 수 (정식: 8/8/16/10)
+  // ponytail: 테스트용 랩 수 (정식: 8/6/8/16/6/10)
   { move:'snatch', label:'스내치',           weight:95,  reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
+  { move:'wb',     label:'월볼샷',            weight:20,  reps:3,  dur:72, pw:0.045, gw:0.100, random:false },
   { move:'bmu',    label:'바 머슬업',         weight:0,   reps:3,  dur:78, pw:0.040, gw:0.100, random:true  },
   { move:'du',     label:'더블언더',          weight:0,   reps:3,  dur:34, pw:0.050, gw:0.110, random:false },
+  { move:'cj',     label:'클린&저크',         weight:135, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
   { move:'alt',    label:'스내치 135lb + 머슬업', weight:135, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
 ];
 
@@ -61,6 +63,7 @@ let roundIdx = 0, repIdx = 0;
 let phase = 'ready';   // ready | run | result
 let frame = 0;
 let curMove = 'snatch';
+let cjStage = 0;       // 클린&저크: 0=클린 탭, 1=저크 탭
 let repDur = 90;
 let zone = {pLo:0.8, pHi:0.89, gLo:0.72, gHi:0.93};
 let judgment = null;
@@ -120,10 +123,11 @@ document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ---------- 진행 ----------
 function curWeight(){ return WOD[roundIdx].weight; }
-function readyDur(){ return curMove==='du' ? 10 : 32; }
+function readyDur(){ return curMove==='du' ? 10 : (curMove==='wb' ? 24 : 32); }
 function resultDur(){
   const ok = judgment && judgment.pts>0;
   if(curMove==='du') return ok ? 12 : 30;
+  if(curMove==='wb') return ok ? 26 : 32;
   return ok ? 56 : 42;
 }
 function pickMove(){
@@ -136,14 +140,17 @@ function startWOD(){
   particles=[]; popups=[];
   updateHUD();
 }
-function startRep(){
-  phase='ready'; frame=0; judgment=null; pickMove();
+function setZone(){
   const r = WOD[roundIdx];
-  // 속도: 랩 진행 + 랜덤 편차
-  repDur = Math.max(28, r.dur - repIdx*1.5 + (Math.random()*10-5));
   // 존 위치: random 라운드는 랩마다 이동 (타이밍 암기 방지)
   const zc = r.random ? 0.55 + Math.random()*0.3 : 0.845;
   zone = { pLo:zc-r.pw, pHi:zc+r.pw, gLo:zc-r.gw, gHi:zc+r.gw };
+}
+function startRep(){
+  phase='ready'; frame=0; judgment=null; cjStage=0; pickMove();
+  // 속도: 랩 진행 + 랜덤 편차
+  repDur = Math.max(28, WOD[roundIdx].dur - repIdx*1.5 + (Math.random()*10-5));
+  setZone();
 }
 function judge(p){
   let res;
@@ -165,12 +172,17 @@ function judge(p){
     res = {text:p<zone.gLo?'EARLY!':'NO REP!', col:'#ff5a5a', pts:0};
     sfx.norep(); shake=7;
   }
-  if(res.pts && curMove==='snatch') tonnage += curWeight();
+  if(res.pts && (curMove==='snatch' || curMove==='wb' || (curMove==='cj' && cjStage===1)))
+    tonnage += curWeight();
   maxCombo = Math.max(maxCombo, combo);
   judgment = res;
   popups.push({text:res.text, col:res.col, y:150, life:40});
   if(res.pts) popups.push({text:'+'+res.pts, col:'#f0ead8', y:172, life:40});
-  phase='result'; frame=0;
+  if(curMove==='cj' && cjStage===0 && res.pts){
+    phase='mid'; frame=0;      // 클린 성공 → 랙 자세 → 저크 게이지
+  } else {
+    phase='result'; frame=0;
+  }
   updateHUD();
 }
 function nextRep(){
@@ -511,6 +523,28 @@ function drawAthlete(ax, ay, pose, opt){
     legF(0,-20,8,20); legF(10,-20,8,20);
     footF(-2,0,12); footF(10,0,12);
   }
+  else if(pose==='rack'){
+    // 프론트 랙: 바 어깨 위, 팔꿈치 전방
+    headF(0,-104);
+    jerseyF(-2,-86,24,28);
+    L(18,-88,10,8,skin);   L(26,-86,8,6,skin);   // 팔꿈치 들림
+    L(-6,-88,10,8,skin);   L(-14,-86,8,6,skin);
+    legF(0,-58,10,52); legF(12,-58,10,52);
+    footF(-2,-6,14); footF(12,-6,14);
+  }
+  else if(pose==='jerk'){
+    // 스플릿 저크: 바 오버헤드 + 앞뒤 스플릿 스탠스
+    headF(0,-100);
+    jerseyF(-2,-82,24,26);
+    L(-8,-96,8,14,skin);   L(-12,-114,8,20,skin);
+    L(20,-96,8,14,skin);   L(24,-114,8,20,skin);
+    L(8,-56,12,12,shorts); L(8,-46,12,2,shortsD);   // 앞 허벅지
+    L(14,-44,8,20,skin);   L(14,-24,8,18,sock);     // 앞다리
+    footF(12,-6,18);
+    L(-14,-52,12,10,shorts);                        // 뒤 허벅지 (뒤로 뻗음)
+    L(-20,-44,8,16,skin);  L(-24,-28,8,16,sock);
+    footF(-26,-6,16);
+  }
   else if(pose==='du'){
     headF(0,-96);
     jerseyF(-2,-78,24,26);
@@ -550,11 +584,65 @@ const AX = 128;
 const RIG_Y = 230;   // 철봉 높이 (배경 배너와 안 겹치게 낮춤)
 const SCALE = 1.7;    // 동작 잘 보이게 확대
 
+// 월볼샷: 1인칭 줌 시점 (공+타겟 클로즈업, 사람은 팔만)
+function drawWbScene(){
+  // OSB 벽 클로즈업
+  px(0,0,W,H,'#c9a86a');
+  for(let i=0;i<70;i++){
+    px((i*37)%W, (i*53)%H, 4, 2, i%3===0?'#b8945a':'#d8bc80');
+  }
+  // 리그 기둥 클로즈업
+  px(118,0,20,H,'#e8e6e0');
+  px(118,0,4,H,'#c8c5bc');
+  // 대형 타겟
+  x.fillStyle='#2a2622'; x.beginPath(); x.arc(135,150,34,0,Math.PI*2); x.fill();
+  x.fillStyle='#3d382e'; x.beginPath(); x.arc(135,150,26,0,Math.PI*2); x.fill();
+  x.fillStyle='#e8453a'; x.beginPath(); x.arc(135,150,10,0,Math.PI*2); x.fill();
+  px(128,140,5,4,'#ffffff55');
+
+  // 공 위치
+  let bx=135, by=300+Math.sin(t*0.12)*3, br=20, impact=false, gone=false;
+  if(phase==='result' && judgment){
+    if(judgment.pts>0){
+      const p2 = Math.min(1, frame/9);
+      by = 300 - p2*150; br = 20 - p2*8;
+      if(frame>=9){ impact=true; gone=true; }
+    } else if(judgment.text==='EARLY!'){
+      const fall = Math.max(0, frame-8);
+      by = 300 - Math.min(1,frame/8)*90 + fall*fall*0.9;   // 못 미치고 낙하
+      br = 16;
+      if(by>H+30) gone=true;
+    }
+  }
+
+  if(impact && frame<20){           // 명중 링 이펙트
+    x.strokeStyle='#ffd23f'; x.lineWidth=3;
+    x.beginPath(); x.arc(135,150,12+(frame-9)*3,0,Math.PI*2); x.stroke();
+  }
+  if(!gone){                        // 월볼 (버건디 + 심 라인)
+    x.fillStyle='#8a3a3a'; x.beginPath(); x.arc(bx,by,br,0,Math.PI*2); x.fill();
+    px(bx-1,by-br,2,br*2,'#6a2a2a');
+    px(bx-br,by-1,br*2,2,'#6a2a2a');
+    x.fillStyle='#a85050'; x.beginPath(); x.arc(bx-br*0.35,by-br*0.35,br*0.25,0,Math.PI*2); x.fill();
+  }
+
+  // 1인칭 팔 (공 던지면 아래에서 대기)
+  const holding = !(phase==='result' && judgment && (judgment.pts>0 || judgment.text==='EARLY!'));
+  const hy = holding ? by : 322;
+  px(64, hy+38, 30, Math.max(0, 404-(hy+38)), '#f2803a');   // 왼 소매
+  px(176, hy+38, 30, Math.max(0, 404-(hy+38)), '#f2803a');
+  px(72, hy+10, 18, 32, '#f2cba6');                          // 왼 전완
+  px(180, hy+10, 18, 32, '#f2cba6');
+  px(bx-br-8, hy-6, 15, 20, '#f2cba6');                      // 손 (공 감쌈)
+  px(bx+br-7, hy-6, 15, 20, '#f2cba6');
+}
+
 function drawScene(){
+  if(curMove==='wb'){ drawWbScene(); return; }
   drawGym();
 
-  // 벽에 걸린 무게 화이트보드 (스내치 랩)
-  if(curMove==='snatch' && curWeight()){
+  // 벽에 걸린 무게 화이트보드 (바벨 랩)
+  if((curMove==='snatch'||curMove==='cj') && curWeight()){
     px(18,124,68,36,'#8a8fa0');
     px(20,126,64,32,'#f6f6f2');
     text('TODAY', 52, 137, 8, '#8a8fa0');
@@ -611,6 +699,23 @@ function drawScene(){
       }
     }
   }
+  else if(curMove==='cj'){
+    if(phase==='ready' || (phase==='run' && cjStage===0)){
+      drawAthlete(AX, FLOOR, 'setup');
+      drawBarbell(AX+6, FLOOR-8, kg);
+    } else if(phase==='mid' || (phase==='run' && cjStage===1)){
+      drawAthlete(AX, FLOOR, 'rack');
+      drawBarbell(AX+4, FLOOR-46, kg);
+    } else { // result
+      if(judgment && judgment.pts>0 && cjStage===1){
+        if(frame<10){ drawAthlete(AX, FLOOR, 'rack'); drawBarbell(AX+4, FLOOR-46-(frame/10)*11, kg); }
+        else { drawAthlete(AX, FLOOR, 'jerk'); drawBarbell(AX+4, FLOOR-57, kg); }
+      } else {
+        drawAthlete(AX, FLOOR, 'stumble');
+        drawBarbell(AX+6, FLOOR-8, kg);   // 바 떨어뜨림
+      }
+    }
+  }
   else { // du
     if(phase==='ready' || phase==='run'){
       // 계속 콩콩 뛰면서 대기
@@ -664,7 +769,7 @@ function loop(){
     text('BIRTHDAY', W/2, 100, 26, '#ffd23f');
     text('WOD', W/2, 130, 26, '#ffd23f');
     text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 156, 10, '#f0ead8');
-    text('스내치 · 머슬업 · 더블언더', W/2, 172, 10, '#8be0d8');
+    text('스내치·월볼·머슬업·더블언더·클린&저크', W/2, 172, 10, '#8be0d8');
     if((t>>4)&1) text('▶ 탭해서 시작', W/2, 192, 12, '#8be0d8');
   }
 
@@ -695,6 +800,10 @@ function loop(){
       const p = frame/repDur;
       drawMeter(p);
       if(p>=1) judge(1.1);
+    }
+    else if(phase==='mid'){
+      // 클린 캐치 → 저크 게이지 준비
+      if(frame>=16){ setZone(); repDur=Math.max(26, repDur*0.85); phase='run'; frame=0; }
     }
     else if(phase==='result'){
       if(frame>=resultDur()) nextRep();
