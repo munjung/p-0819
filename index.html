@@ -12,7 +12,9 @@
   body {
     background:#0d0b12;
     display:flex; align-items:center; justify-content:center;
-    min-height:100vh; padding:12px;
+    min-height:100vh;
+    /* 폰 상태바(노치)에 HUD 안 가리게 + 전체 살짝 아래로 */
+    padding: calc(20px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
     font-family:'Galmuri11', monospace; color:#f0ead8;
   }
   #wrap { width:100%; max-width:400px; }
@@ -72,6 +74,17 @@ let perfects = 0, goods = 0, misses = 0, tonnage = 0;
 let t = 0, shake = 0;
 let particles = [];
 let popups = [];
+let roundMisses = 0;      // 라운드 내 NO REP 누적 (3회면 라운드 실패)
+let coachMsg = null;      // {text, side, life}
+let isNewBest = false;
+
+const COACH = [
+  '어깨 빠지지 마!', '호흡 잊지 마!', '코어 조여!',
+  '팔로 들지 마, 다리로!', '시선은 정면!', '풀 익스텐션!',
+  '바 몸에 가깝게!', '좋아, 그 템포!', '무릎 밖으로!',
+  '힙 드라이브!', '집중해 집중!', '마지막처럼 해!',
+];
+function bestScore(){ try{ return +(localStorage.getItem('wodBest')||0); }catch(_){ return 0; } }
 
 // ---------- 사운드 ----------
 let AC = null, muted = false;
@@ -141,6 +154,7 @@ function pickMove(){
 function startWOD(){
   state='intro'; roundIdx=0; repIdx=0; frame=0; t=0;
   combo=0; maxCombo=0; score=0; perfects=0; goods=0; misses=0; tonnage=0;
+  roundMisses=0; coachMsg=null; isNewBest=false;
   particles=[]; popups=[];
   updateHUD();
 }
@@ -152,6 +166,10 @@ function setZone(){
 }
 function startRep(){
   phase='ready'; frame=0; judgment=null; cjStage=0; pickMove();
+  if(Math.random()<0.35) coachMsg = {   // 코치 한마디 (랜덤 좌/우 말풍선)
+    text: COACH[Math.random()*COACH.length|0],
+    side: Math.random()<0.5?'L':'R', life: 85,
+  };
   // 속도: 랩 진행 + 랜덤 편차
   repDur = Math.max(28, WOD[roundIdx].dur - repIdx*1.5 + (Math.random()*10-5));
   setZone();
@@ -172,7 +190,7 @@ function judge(p){
     res = {text:'GOOD', col:'#8be0d8', pts};
     sfx.good(); chalk(8);
   } else {
-    combo=0; misses++;
+    combo=0; misses++; roundMisses++;
     res = {text:p<zone.gLo?'EARLY!':'NO REP!', col:'#ff5a5a', pts:0};
     sfx.norep(); shake=7;
   }
@@ -187,14 +205,22 @@ function judge(p){
   } else {
     phase='result'; frame=0;
   }
+  if(!res.pts && roundMisses>=3){      // NO REP 3회 → 라운드 실패
+    state='failed'; frame=0; coachMsg=null;
+  }
   updateHUD();
 }
 function nextRep(){
   repIdx++;
   if(repIdx >= WOD[roundIdx].reps){
     roundIdx++;
-    repIdx=0;
-    if(roundIdx >= WOD.length){ state='done'; t=0; sfx.clear(); return; }
+    repIdx=0; roundMisses=0;
+    if(roundIdx >= WOD.length){
+      state='done'; t=0; sfx.clear();
+      isNewBest = score > bestScore();
+      if(isNewBest){ try{ localStorage.setItem('wodBest', score); }catch(_){} }
+      return;
+    }
     state='intro'; frame=0;
     updateHUD();
   } else { startRep(); updateHUD(); }
@@ -825,6 +851,22 @@ function loop(){
     text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 156, 10, '#f0ead8');
     text('스내치·월볼·머슬업·더블언더·클린&저크', W/2, 172, 10, '#8be0d8');
     if((t>>4)&1) text('▶ 탭해서 시작', W/2, 192, 12, '#8be0d8');
+    const bs = bestScore();
+    if(bs>0) text('최고 기록 '+bs, W/2, 214, 10, '#ffd23f');
+  }
+
+  else if(state==='failed'){
+    frame++;
+    drawGym();
+    x.fillStyle='rgba(0,0,0,0.65)'; x.fillRect(0,140,W,110);
+    text('라운드 실패!', W/2, 178, 20, '#ff5a5a');
+    text('NO REP 3회 누적', W/2, 202, 11, '#f0ead8');
+    text('이 라운드 처음부터 다시!', W/2, 222, 11, '#8be0d8');
+    if(frame>=90){
+      repIdx=0; roundMisses=0;
+      state='intro'; frame=0;
+      updateHUD();
+    }
   }
 
   else if(state==='intro'){
@@ -867,6 +909,21 @@ function loop(){
       text(combo+' COMBO', W/2+1, 63, 13, '#00000066');
       text(combo+' COMBO', W/2, 62, 13, combo>=5?'#ffd23f':'#8be0d8');
     }
+
+    // 코치 말풍선 (랜덤 좌/우)
+    if(coachMsg){
+      const cw = Math.min(180, coachMsg.text.length*11+20);
+      const bx2 = coachMsg.side==='L' ? 8 : W-8-cw;
+      const by2 = 92;
+      px(bx2,by2,cw,24,'#f6f6f2');
+      px(bx2,by2,cw,2,'#2a2340'); px(bx2,by2+22,cw,2,'#2a2340');
+      px(bx2,by2,2,24,'#2a2340'); px(bx2+cw-2,by2,2,24,'#2a2340');
+      const tx2 = coachMsg.side==='L' ? bx2+16 : bx2+cw-24;
+      px(tx2,by2+24,8,3,'#f6f6f2');
+      px(tx2+2,by2+27,4,3,'#f6f6f2');
+      text(coachMsg.text, bx2+cw/2, by2+16, 9, '#1e2a52');
+      if(--coachMsg.life<=0) coachMsg=null;
+    }
   }
 
   else if(state==='done'){
@@ -890,15 +947,23 @@ function loop(){
     text(grade, W/2, 178, 12, '#ff9ec4');
     text('생일 축하해!', W/2, 196, 15, '#ffd23f');
 
-    // 상품 연출: TYR CXT-3
-    drawShoe(90, 208);
-    for(let i=0;i<6;i++){                        // 반짝이
-      if(((t>>3)+i)%3===0){
-        const spx = 78 + i*24, spy = 210 + ((i*17)%32);
-        px(spx,spy,2,2,'#ffd23f'); px(spx-2,spy,1,2,'#ffd23f88'); px(spx+3,spy,1,2,'#ffd23f88');
+    if(isNewBest && (t>>3)&1) text('NEW RECORD!', W/2, 120, 9, '#ffd23f');
+
+    if(rate>=0.55){
+      // 통과: 상품 TYR CXT-3
+      drawShoe(90, 208);
+      for(let i=0;i<6;i++){                      // 반짝이
+        if(((t>>3)+i)%3===0){
+          const spx = 78 + i*24, spy = 210 + ((i*17)%32);
+          px(spx,spy,2,2,'#ffd23f'); px(spx-2,spy,1,2,'#ffd23f88'); px(spx+3,spy,1,2,'#ffd23f88');
+        }
       }
+      text('★ 상품: TYR CXT-3 획득! ★', W/2, 262, 11, '#ffd23f');
+    } else {
+      // 미달: 상품 게이트
+      text('목표 미달... 신발은 아직!', W/2, 226, 13, '#ff5a5a');
+      text('퍼펙트 비율을 올려서 재도전하자', W/2, 248, 10, '#8be0d8');
     }
-    text('★ 상품: TYR CXT-3 획득! ★', W/2, 262, 11, '#ffd23f');
     if((t>>4)&1) text('▶ 탭해서 다시 도전', W/2, 286, 10, '#7a7292');
     // 하트
     for(let i=0;i<3;i++){
