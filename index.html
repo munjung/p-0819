@@ -371,7 +371,7 @@ function setZone(){
   // 존 위치: random 라운드는 랩마다 이동 (타이밍 암기 방지)
   const zc = r.random ? 0.55 + Math.random()*0.3 : 0.845;
   const m  = wMode==='scaled' ? 1.3 : 1;     // 스케일드: 굿 존 30% 넓게
-  const pm = wMode==='scaled' ? 1.3 : 0.85;  // RX'D: 퍼펙트 존 15% 축소
+  const pm = wMode==='scaled' ? 1.3 : 0.65;  // RX'D: 퍼펙트 존 35% 축소
   zone = { pLo:zc-r.pw*pm, pHi:zc+r.pw*pm, gLo:zc-r.gw*m, gHi:zc+r.gw*m };
 }
 function startRep(){
