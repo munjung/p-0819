@@ -103,6 +103,7 @@ let t = 0, shake = 0;
 let particles = [];
 let popups = [];
 let roundMisses = 0;      // 라운드 내 NO REP 누적 (3회면 라운드 실패)
+let repEvent = null;      // RX'D 랜덤 이벤트: 'judge'(퍼펙트만 인정) | 'blind'(존 중간에 숨김)
 let coachMsg = null;      // {text, side, life}
 let isNewBest = false;
 
@@ -344,6 +345,12 @@ function setZone(){
 }
 function startRep(){
   phase='ready'; frame=0; judgment=null; cjStage=0; pickMove();
+  // RX'D 전용 랜덤 이벤트 (저지 15% / 블라인드 15%, 동시 없음)
+  repEvent = null;
+  if(wMode==='rx'){
+    const r2 = Math.random();
+    repEvent = r2<0.15 ? 'judge' : (r2<0.30 ? 'blind' : null);
+  }
   if(Math.random()<0.6){                // 코치 한마디 (랜덤 좌/우 말풍선)
     const pool = curMove==='wb' ? COACH_WB : COACH;
     coachMsg = {
@@ -365,7 +372,7 @@ function judge(p){
     res = {text:'PERFECT!', col:'#ffd23f', pts};
     if(curMove==='du') sfx.du(); else sfx.perfect();
     shake=5; chalk(20);
-  } else if(p>=zone.gLo && p<=zone.gHi){
+  } else if(repEvent!=='judge' && p>=zone.gLo && p<=zone.gHi){
     combo++; goods++;
     const pts = 50 + combo*5;
     score += pts;
@@ -373,7 +380,8 @@ function judge(p){
     sfx.good(); chalk(8);
   } else {
     combo=0; misses++; roundMisses++;
-    res = {text:p<zone.gLo?'EARLY!':'NO REP!', col:'#ff5a5a', pts:0};
+    const inGood = p>=zone.gLo && p<=zone.gHi;   // 저지 랩에서 GOOD은 노렙
+    res = {text: inGood?'저지: NO REP!' : (p<zone.gLo?'EARLY!':'NO REP!'), col:'#ff5a5a', pts:0};
     sfx.norep(); shake=7;
   }
   if(res.pts && (curMove==='snatch' || curMove==='wb' || (curMove==='cj' && cjStage===1)))
@@ -1037,8 +1045,13 @@ function drawMeter(p){
   px(mx-2, my-2, mw+4, mh+4, '#2a2540');
   px(mx, my, mw, mh, '#14121c');
   const xOf = q => mx + Math.max(0,Math.min(1,q))*mw;
-  px(xOf(zone.gLo), my, (zone.gHi-zone.gLo)*mw, mh, '#2e6e5a');
-  px(xOf(zone.pLo), my, (zone.pHi-zone.pLo)*mw, mh, '#ffd23f');
+  const hidden = repEvent==='blind' && p>0.45;   // 블라인드: 중반부터 존 숨김
+  if(!hidden){
+    px(xOf(zone.gLo), my, (zone.gHi-zone.gLo)*mw, mh, '#2e6e5a');
+    px(xOf(zone.pLo), my, (zone.pHi-zone.pLo)*mw, mh, '#ffd23f');
+  } else {
+    text('?', 135, my+14, 12, '#8be0d8');
+  }
   const markX = xOf(p);
   px(markX-2, my-5, 4, mh+10, '#ffffff');
   px(markX-2, my-5, 1, mh+10, '#8be0d8');
@@ -1233,6 +1246,14 @@ function loop(){
     if(phase==='ready'){
       if((frame>>3)&1) text('READY...', W/2, 120, 11, '#2a2340');
       if(frame>=readyDur()){ phase='run'; frame=0; }
+    }
+
+    // RX'D 이벤트 경고
+    if(repEvent && (phase==='ready'||phase==='run')){
+      const evTxt = repEvent==='judge' ? '!! 저지 주목: PERFECT만 인정 !!' : '!! 존 암기: 중간에 사라짐 !!';
+      const evCol = repEvent==='judge' ? '#ff5a5a' : '#8be0d8';
+      text(evTxt, W/2+1, 137, 9, '#00000077');
+      text(evTxt, W/2, 136, 9, evCol);
     }
     else if(phase==='run'){
       const p = frame/repDur;
