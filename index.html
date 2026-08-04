@@ -52,7 +52,7 @@ const FLOOR = 360;
 // pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
 const WOD = [
   // ponytail: 테스트용 랩 수 (정식: 8/6/8/16/6/10)
-  { move:'snatch', label:'스내치',           weight:75,  wStep:10, reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
+  { move:'snatch', label:'스내치',           weight:95,  wStep:20, wMax:135, reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
   { move:'wb',     label:'월볼샷',            weight:20,  reps:3,  dur:72, pw:0.045, gw:0.100, random:false },
   { move:'bmu',    label:'바 머슬업',         weight:0,   reps:3,  dur:78, pw:0.040, gw:0.100, random:true  },
   { move:'du',     label:'더블언더',          weight:0,   reps:3,  dur:34, pw:0.050, gw:0.110, random:false },
@@ -135,9 +135,11 @@ c.addEventListener('pointerdown', e=>{ e.preventDefault(); action(); });
 document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ---------- 진행 ----------
-function curWeight(){    // 랩마다 점진적 증량 (wStep)
+function curWeight(){    // 랩마다 점진적 증량 (wStep, wMax 상한)
   const r = WOD[roundIdx];
-  return r.weight ? r.weight + (r.wStep||0)*repIdx : 0;
+  if(!r.weight) return 0;
+  const w = r.weight + (r.wStep||0)*repIdx;
+  return r.wMax ? Math.min(r.wMax, w) : w;
 }
 function readyDur(){ return curMove==='du' ? 10 : (curMove==='wb' ? 24 : 32); }
 function resultDur(){
@@ -166,7 +168,7 @@ function setZone(){
 }
 function startRep(){
   phase='ready'; frame=0; judgment=null; cjStage=0; pickMove();
-  if(Math.random()<0.35) coachMsg = {   // 코치 한마디 (랜덤 좌/우 말풍선)
+  if(Math.random()<0.6) coachMsg = {    // 코치 한마디 (랜덤 좌/우 말풍선)
     text: COACH[Math.random()*COACH.length|0],
     side: Math.random()<0.5?'L':'R', life: 85,
   };
