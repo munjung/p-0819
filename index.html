@@ -220,6 +220,16 @@ function buildTap(e){
 }
 function action(e){
   audioInit();
+  // 좌상단 뒤로가기: 빌더→타이틀, 게임 중→빌더 (WOD 중단)
+  if(e && (state==='build'||state==='play'||state==='intro'||state==='failed')){
+    const {mx,my} = canvasPos(e);
+    if(mx<=44 && my<=36){
+      state = (state==='build') ? 'title' : 'build';
+      t=0; coachMsg=null;
+      updateHUD(); sfx.count();
+      return;
+    }
+  }
   if(state==='title'){
     if(e){
       const {my} = canvasPos(e);
@@ -1593,6 +1603,14 @@ function loop(){
       x.fillRect(hx,hy,2,2); x.fillRect(hx+4,hy,2,2);
       x.fillRect(hx-1,hy+2,8,2); x.fillRect(hx+1,hy+4,4,2); x.fillRect(hx+2,hy+6,2,2);
     }
+  }
+
+  // 뒤로가기 버튼 (빌더/게임 중)
+  if(state==='build'||state==='play'||state==='intro'||state==='failed'){
+    px(8,8,34,26,'#2a2340');
+    px(8,8,34,2,'#4a4468'); px(8,32,34,2,'#4a4468');
+    px(8,8,2,26,'#4a4468'); px(40,8,2,26,'#4a4468');
+    text('←', 25, 27, 14, '#8be0d8');
   }
 
   // 초크 파티클
