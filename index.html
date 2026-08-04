@@ -79,6 +79,8 @@ function fmtTime(fr){
 }
 let playerName = '배주열';
 try{ playerName = localStorage.getItem('wodName') || '배주열'; }catch(_){}
+let charSel = 'M';         // 'M' 남자 | 'F' 여자
+try{ charSel = localStorage.getItem('wodChar') || 'M'; }catch(_){}
 
 // 업적 뱃지
 const BADGES = [
@@ -233,7 +235,13 @@ function action(e){
   if(state==='title'){
     if(e){
       const {my} = canvasPos(e);
-      if(my>=212&&my<=232){ rename(); return; }   // 이름 변경
+      if(my>=212&&my<=228){ rename(); return; }   // 이름 변경
+      if(my>228&&my<=246){                        // 캐릭터 전환
+        charSel = charSel==='F' ? 'M' : 'F';
+        try{ localStorage.setItem('wodChar', charSel); }catch(_){}
+        sfx.count();
+        return;
+      }
     }
     state='build'; t=0;
     return;
@@ -709,9 +717,12 @@ function drawRig(rx, barY){
 // pose: setup | pull | extend | overhead | ohstand | hang | kip | pullup | dip | support | du | stumble
 // 내부는 파인 좌표(코스 1px = 파인 2px), ctx.scale(0.5)로 기존 크기 유지
 function drawAthlete(ax, ay, pose, opt){
+  const isF = charSel==='F';
   const skin='#f2cba6', skinD='#dfb28c', hair='#3a2c22', hairD='#2c211a',
         top='#f2803a', topD='#1e2a52',
-        shorts='#2a6ad4', shortsD='#1e4fa8', sock='#f4f4f2';
+        shorts = isF?'#3a9a4a':'#2a6ad4', shortsD = isF?'#2e7d3c':'#1e4fa8',
+        sock='#f4f4f2',
+        shin = isF?'#1e1e22':skin;   // 여: 굽힌 다리 정강이는 3부 레깅스
   const wob = (pose==='stumble') ? Math.sin(t*0.6)*4 : 0;
   const jumpOff = (pose==='du' && opt && opt.jump) ? opt.jump*10 : 0;
 
@@ -722,6 +733,24 @@ function drawAthlete(ax, ay, pose, opt){
 
   // 얼굴: 앞머리 있는 다크브라운 + 또렷한 눈
   function headF(hx,hy){
+    if(isF){
+      // 묶음머리 + 초록 헤어밴드
+      L(hx-2,hy-6,24,9,hair);           // 뒤로 넘긴 윗머리
+      L(hx-10,hy,8,9,hair);             // 뒤 묶음 (번)
+      L(hx-3,hy+1,3,6,hair);            // 목덜미 연결
+      L(hx-3,hy+2,2,4,'#2e8c4a');       // 머리끈
+      L(hx+18,hy-2,4,9,hair);           // 옆 잔머리
+      L(hx,hy+2,20,16,skin);            // 얼굴
+      L(hx,hy+16,20,2,skinD);
+      L(hx,hy+2,20,3,'#3a9a4a');        // 초록 헤어밴드
+      L(hx+3,hy+9,4,4,'#2a2a2a');       // 눈
+      L(hx+13,hy+9,4,4,'#2a2a2a');
+      L(hx+4,hy+9,1,1,'#f0f0f0');
+      L(hx+14,hy+9,1,1,'#f0f0f0');
+      L(hx+9,hy+12,2,3,skinD);          // 코
+      L(hx+6,hy+16,8,2,'#e0808a');      // 입술
+      return;
+    }
     L(hx-2,hy-6,24,10,hair);            // 윗머리 볼륨
     L(hx,hy-6,20,3,hairD);              // 정수리 음영
     L(hx-4,hy-2,5,13,hair);             // 옆머리
@@ -741,6 +770,20 @@ function drawAthlete(ax, ay, pose, opt){
   }
   // 레알 24-25 어웨이 (파인 디테일)
   function jerseyF(jx,jy,wd,ht){
+    if(isF){
+      jx-=1; wd+=2; ht+=2;
+      const cropH = Math.max(10, ht-6);
+      L(jx,jy,wd,cropH,'#f4f4f0');      // 흰 크롭티
+      L(jx+3,jy,wd-6,1,'#dcdcd6');      // 넥라인
+      const gx=jx+(wd>>1)-8, gy=jy+5, G='#2e8c4a';
+      L(gx,gy,1,5,G);   L(gx,gy,3,1,G);    L(gx,gy+2,2,1,G); L(gx,gy+4,3,1,G);   // E
+      L(gx+4,gy,1,5,G); L(gx+6,gy,1,5,G);  L(gx+5,gy+2,1,1,G);                    // N
+      L(gx+8,gy,1,5,G); L(gx+10,gy,1,5,G); L(gx+9,gy+4,1,1,G);                    // U
+      L(gx+12,gy,1,5,G);L(gx+12,gy,3,1,G); L(gx+12,gy+2,2,1,G);                   // F
+      L(jx,jy+cropH,wd,1,'#dcdcd6');    // 크롭 밑단
+      L(jx+2,jy+cropH+1,wd-4,ht-cropH-1,skin);   // 허리 노출
+      return;
+    }
     jx-=2; wd+=4; ht+=4;                // 오버핏
     L(jx,jy,wd,ht,top);
     L(jx+4,jy,wd-8,2,topD);             // 네이비 크루넥
@@ -760,6 +803,17 @@ function drawAthlete(ax, ay, pose, opt){
   }
   // 곧은 다리: 짧은 반바지(밑단) → 맨다리 → 나이키 양말(스우시)
   function legF(lx,ly,w,h){
+    if(isF){
+      const f1=Math.round(h*0.26), f2=Math.round(h*0.30), f3=Math.round(h*0.16);
+      L(lx,ly,w,f1,shorts);                    // 초록 반바지
+      L(lx,ly+f1-2,w,2,shortsD);
+      L(lx,ly+f1,w,f2,'#1e1e22');              // 3부 레깅스
+      L(lx,ly+f1+f2,w,f3,skin);
+      const sy2=ly+f1+f2+f3;
+      L(lx,sy2,w,h-(f1+f2+f3),sock);
+      L(lx,sy2,w,2,'#2e8c4a');                 // 양말 초록 탑
+      return;
+    }
     const s1=Math.round(h*0.3), s2=Math.round(h*0.42);
     L(lx,ly,w,s1,shorts);
     L(lx,ly+s1-2,w,2,shortsD);          // 반바지 밑단
@@ -770,6 +824,14 @@ function drawAthlete(ax, ay, pose, opt){
   }
   // 메트콘9: 어두운 어퍼 + 흰 미드솔 + 검정 아웃솔
   function footF(fx,fy,w){
+    if(isF){
+      L(fx,fy,w,3,'#e8e8e4');                  // 밝은 어퍼
+      L(fx+1,fy,3,2,'#f8f8f4');
+      L(fx+w-4,fy,4,2,'#2e8c4a');              // 초록 힐 포인트
+      L(fx,fy+3,w,2,'#ffffff');                // 흰 미드솔
+      L(fx,fy+5,w,1,'#3a3a40');                // 아웃솔
+      return;
+    }
     L(fx,fy,w,3,'#2a2a30');
     L(fx+1,fy,3,2,'#3d3d48');           // 어퍼 하이라이트
     L(fx,fy+3,w,2,'#f0f0f0');
@@ -792,8 +854,8 @@ function drawAthlete(ax, ay, pose, opt){
     }
     L(-6,-44,24,15,shorts);                   // 엉덩이~허벅지
     L(-6,-31,24,2,shortsD);
-    L(12,-26,8,8,skin);  L(12,-18,8,12,sock);  // 앞 정강이
-    L(-6,-26,8,8,skin);  L(-6,-18,8,12,sock);  // 뒷 정강이
+    L(12,-26,8,8,shin);  L(12,-18,8,12,sock);  // 앞 정강이
+    L(-6,-26,8,8,shin);  L(-6,-18,8,12,sock);  // 뒷 정강이
     footF(-8,-6,18); footF(10,-6,20);
   }
   else if(pose==='pull'){
@@ -819,7 +881,7 @@ function drawAthlete(ax, ay, pose, opt){
     L(22,-80,8,16,skin);   L(30,-98,8,20,skin);
     L(-6,-46,16,16,shorts);  L(14,-46,16,16,shorts);   // 스쿼트 허벅지
     L(-6,-32,16,2,shortsD);  L(14,-32,16,2,shortsD);
-    L(-10,-30,16,10,skin);   L(18,-30,16,10,skin);
+    L(-10,-30,16,10,shin);   L(18,-30,16,10,shin);
     L(-10,-20,16,14,sock);   L(18,-20,16,14,sock);
     footF(-12,-6,18); footF(18,-6,18);
   }
@@ -845,7 +907,7 @@ function drawAthlete(ax, ay, pose, opt){
     headF(-6,26);
     jerseyF(-4,44,24,24);
     L(6,68,10,20,shorts);  L(6,84,10,2,shortsD);   // 허벅지 뒤로
-    L(14,84,6,10,skin);
+    L(14,84,6,10,shin);
     L(18,90,8,8,sock);
     footF(20,96,12); footF(8,84,10);
   }
@@ -880,7 +942,7 @@ function drawAthlete(ax, ay, pose, opt){
     headF(-4,26);
     jerseyF(0,46,22,24);
     L(10,70,14,10,shorts);              // 허벅지 앞으로
-    L(18,80,8,10,skin);
+    L(18,80,8,10,shin);
     L(24,88,8,10,sock);
     footF(26,98,12);
   }
@@ -891,7 +953,7 @@ function drawAthlete(ax, ay, pose, opt){
     headF(-10,14);
     jerseyF(-4,20,26,18);                    // 몸통 수평
     L(20,26,12,12,shorts);                   // 힙~허벅지 바 쪽
-    L(26,14,8,12,skin);
+    L(26,14,8,12,shin);
     L(30,4,8,10,sock);
     footF(32,-6,12);                         // 발끝이 바 높이까지
   }
@@ -912,12 +974,12 @@ function drawAthlete(ax, ay, pose, opt){
     L(20,-96,8,14,skin);   L(24,-114,8,20,skin);
     // 앞다리: 무릎 앞으로 굽힘 (런지)
     L(10,-52,18,10,shorts); L(10,-44,18,2,shortsD);  // 허벅지 수평 전방
-    L(22,-42,8,18,skin);                             // 무릎 아래 수직
+    L(22,-42,8,18,shin);                             // 무릎 아래 수직
     L(22,-24,8,18,sock);
     footF(20,-6,18);
     // 뒷다리: 뒤로 뻗어 대각선
     L(-8,-52,14,10,shorts);
-    L(-14,-44,8,16,skin);
+    L(-14,-44,8,16,shin);
     L(-22,-30,8,24,sock);
     footF(-26,-6,16);
   }
@@ -937,19 +999,19 @@ function drawAthlete(ax, ay, pose, opt){
       L(-6,-70,8,14,skin);                        // 뒤팔
       L(24,-60,8,14,skin);                        // 앞팔
       L(10,-48,12,10,shorts);                     // 앞다리
-      L(16,-38,8,16,skin); L(16,-22,8,16,sock);
+      L(16,-38,8,16,shin); L(16,-22,8,16,sock);
       footF(14,-6,16);
       L(-4,-48,12,10,shorts);                     // 뒷다리 (뒤로 참)
-      L(-10,-40,8,14,skin); L(-14,-26,8,14,sock);
+      L(-10,-40,8,14,shin); L(-14,-26,8,14,sock);
       footF(-18,-12,14);
     } else {
       L(24,-70,8,14,skin);
       L(-6,-60,8,14,skin);
       L(-2,-48,12,10,shorts);
-      L(-4,-38,8,16,skin); L(-4,-22,8,16,sock);
+      L(-4,-38,8,16,shin); L(-4,-22,8,16,sock);
       footF(-6,-6,16);
       L(12,-48,12,10,shorts);
-      L(18,-40,8,14,skin); L(22,-26,8,14,sock);
+      L(18,-40,8,14,shin); L(22,-26,8,14,sock);
       footF(24,-12,14);
     }
   }
@@ -1353,7 +1415,7 @@ function loop(){
     drawAthlete(AX, FLOOR, 'ohstand');
     drawBarbell(AX+6, FLOOR-59, 95);
     x.restore();
-    x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,168);   // 텍스트만 커버, 선수는 안 가리게
+    x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,186);   // 텍스트만 커버, 선수는 안 가리게
     text('BIRTHDAY', W/2, 100, 26, '#ffd23f');
     text('WOD', W/2, 130, 26, '#ffd23f');
     text('골드 존에서 탭! 퍼펙트를 노려라', W/2, 156, 10, '#f0ead8');
@@ -1362,6 +1424,7 @@ function loop(){
     const bs = bestScore();
     if(bs>0) text('최고 기록 '+bs, W/2, 206, 10, '#ffd23f');
     text('선수: '+playerName+'  (탭해서 변경)', W/2, 220, 9, '#8be0d8');
+    text('캐릭터: '+(charSel==='F'?'여자 ♀':'남자 ♂')+'  (탭해서 변경)', W/2, 236, 9, '#ff9ec4');
     // 선수 말풍선
     const bob2 = Math.sin(t*0.06)*2;
     px(158,262+bob2,100,24,'#f6f6f2');
