@@ -285,6 +285,36 @@ function drawBarbell(bx, by, lb){
   px(bx-27,by-1,54,1,'#8a8a92');
 }
 
+// ---------- 상품: TYR CXT-2 (화이트/검솔) ----------
+function drawShoe(sx,sy){
+  const wht='#f4f4f0', shd='#e2e2da', blk='#16161a', gry='#9a9aa2',
+        gum='#d8b06a', gumD='#c09449';
+  // 검 아웃솔
+  px(sx+2,sy+22,60,4,gum);
+  px(sx+2,sy+25,60,1,gumD);
+  px(sx,sy+19,10,6,gum);                        // 토 랩
+  // 미드솔: 검정 스트라이프 + 힐 회색 파츠
+  px(sx+8,sy+19,44,4,blk);
+  px(sx+44,sy+13,18,10,blk);
+  px(sx+50,sy+16,10,4,gry);
+  // 흰 어퍼
+  px(sx+4,sy+10,52,10,wht);
+  px(sx+10,sy+4,34,8,wht);                      // 발등
+  px(sx+40,sy+2,16,12,wht);                     // 힐컵
+  px(sx+2,sy+13,6,7,wht);                       // 토 박스
+  px(sx+8,sy+15,36,3,shd);                      // 메쉬 음영
+  // 검정 카라 (발목 안감)
+  px(sx+42,sy+2,12,4,blk);
+  px(sx+50,sy+5,6,5,blk);
+  // 텅 + 레이스
+  px(sx+26,sy,10,5,'#dcdcd6');
+  for(let k=0;k<4;k++) px(sx+15+k*6,sy+5+k*2,5,2,wht);
+  for(let k=0;k<4;k++) px(sx+14+k*6,sy+7+k*2,1,1,shd);
+  // TYR 로고 (힐/텅)
+  px(sx+45,sy+8,9,4,'#2a2a30');
+  px(sx+46,sy+9,2,2,'#f0f0f0'); px(sx+49,sy+9,1,2,'#f0f0f0'); px(sx+51,sy+9,2,2,'#f0f0f0');
+}
+
 // ---------- 풀업 리그 ----------
 function drawRig(rx, barY){
   px(rx-52,barY,104,4,'#3a6ad4');            // 파랑 바
@@ -664,20 +694,30 @@ function loop(){
     drawAthlete(AX, FLOOR, 'ohstand');
     drawBarbell(AX+6, FLOOR-59, 135);
     x.restore();
-    x.fillStyle='rgba(0,0,0,0.75)'; x.fillRect(0,52,W,260);
+    x.fillStyle='rgba(0,0,0,0.78)'; x.fillRect(0,52,W,254);
 
     const total = perfects+goods+misses;
     const rate = total? perfects/total : 0;
     const grade = rate>=0.85 ? "RX'D! 완벽한 애슬릿 ★" : rate>=0.55 ? '좋아! 폼 조금만 더!' : '스케일드... 재도전?';
 
-    text('WOD COMPLETE!', W/2, 88, 18, '#ffd23f');
-    text('SCORE  '+score, W/2, 118, 15, '#f0ead8');
-    text('PERFECT '+perfects+' · GOOD '+goods, W/2, 144, 10, '#8be0d8');
-    text('NO REP '+misses+' · MAX COMBO '+maxCombo, W/2, 160, 10, '#8be0d8');
-    text('총 리프팅 '+tonnage+'lb', W/2, 176, 10, '#8be0d8');
-    text(grade, W/2, 208, 12, '#ff9ec4');
-    text('생일 축하해!', W/2, 238, 15, '#ffd23f');
-    if((t>>4)&1) text('▶ 탭해서 다시 도전', W/2, 266, 10, '#7a7292');
+    text('WOD COMPLETE!', W/2, 80, 18, '#ffd23f');
+    text('SCORE  '+score, W/2, 106, 15, '#f0ead8');
+    text('PERFECT '+perfects+' · GOOD '+goods, W/2, 128, 10, '#8be0d8');
+    text('NO REP '+misses+' · MAX COMBO '+maxCombo, W/2, 143, 10, '#8be0d8');
+    text('총 리프팅 '+tonnage+'lb', W/2, 158, 10, '#8be0d8');
+    text(grade, W/2, 178, 12, '#ff9ec4');
+    text('생일 축하해!', W/2, 196, 15, '#ffd23f');
+
+    // 상품 연출: TYR CXT-2
+    drawShoe(103, 212);
+    for(let i=0;i<5;i++){                        // 반짝이
+      if(((t>>3)+i)%3===0){
+        const spx = 88 + i*26, spy = 214 + ((i*17)%28);
+        px(spx,spy,2,2,'#ffd23f'); px(spx-2,spy,1,2,'#ffd23f88'); px(spx+3,spy,1,2,'#ffd23f88');
+      }
+    }
+    text('★ 상품: TYR CXT-2 획득! ★', W/2, 262, 11, '#ffd23f');
+    if((t>>4)&1) text('▶ 탭해서 다시 도전', W/2, 286, 10, '#7a7292');
     // 하트
     for(let i=0;i<3;i++){
       const hy = 330 - ((t*0.6+i*30)%60);
