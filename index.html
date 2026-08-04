@@ -179,7 +179,7 @@ function judge(p){
   popups.push({text:res.text, col:res.col, y:150, life:40});
   if(res.pts) popups.push({text:'+'+res.pts, col:'#f0ead8', y:172, life:40});
   if(curMove==='cj' && cjStage===0 && res.pts){
-    phase='mid'; frame=0;      // 클린 성공 → 랙 자세 → 저크 게이지
+    cjStage=1; phase='mid'; frame=0;   // 클린 성공 → 랙 → 저크 게이지로 전환
   } else {
     phase='result'; frame=0;
   }
