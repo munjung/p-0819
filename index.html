@@ -370,8 +370,9 @@ function setZone(){
   const r = WOD[roundIdx];
   // 존 위치: random 라운드는 랩마다 이동 (타이밍 암기 방지)
   const zc = r.random ? 0.55 + Math.random()*0.3 : 0.845;
-  const m = wMode==='scaled' ? 1.3 : 1;   // 스케일드: 판정 존 30% 넓게
-  zone = { pLo:zc-r.pw*m, pHi:zc+r.pw*m, gLo:zc-r.gw*m, gHi:zc+r.gw*m };
+  const m  = wMode==='scaled' ? 1.3 : 1;     // 스케일드: 굿 존 30% 넓게
+  const pm = wMode==='scaled' ? 1.3 : 0.85;  // RX'D: 퍼펙트 존 15% 축소
+  zone = { pLo:zc-r.pw*pm, pHi:zc+r.pw*pm, gLo:zc-r.gw*m, gHi:zc+r.gw*m };
 }
 function startRep(){
   phase='ready'; frame=0; judgment=null; cjStage=0; pickMove();
@@ -379,7 +380,7 @@ function startRep(){
   repEvent = null;
   if(wMode==='rx' && curMove!=='run'){
     const r2 = Math.random();
-    repEvent = r2<0.15 ? 'judge' : (r2<0.30 ? 'blind' : null);
+    repEvent = r2<0.25 ? 'judge' : (r2<0.40 ? 'blind' : null);   // 탱코 25% / 블라인드 15%
   }
   if(curMove==='run'){ runDist=0; runSpeed=0; runSeg=0; segFrames=0; lastSide=null; }
   if(Math.random()<0.6){                // 코치 한마디 (랜덤 좌/우 말풍선)
