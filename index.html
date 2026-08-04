@@ -336,16 +336,18 @@ function drawAthlete(ax, ay, pose, opt){
   }
 
   if(pose==='setup'){
-    // 데드리프트 셋업
-    head(ax+8, ay-34);
-    jersey(ax-2,ay-27,16,10);
-    px(ax+10,ay-24,4,14,skin);
-    px(ax+16,ay-24,4,14,skin);
-    px(ax-2,ay-18,8,10,shorts);       // 굽힌 허벅지
-    px(ax,ay-8,7,3,skin);             // 정강이
-    px(ax,ay-5,7,2,sock);
-    foot(ax-1,ay-3,9);
-    foot(ax+8,ay-3,9);
+    // 스내치 스타트: 딥 스쿼트 (엉덩이 낮게, 가슴 세우고, 팔은 바까지 쭉)
+    head(ax+2, ay-40);
+    jersey(ax, ay-31, 12, 11);
+    px(ax+10,ay-28,4,11,skin);        // 팔 어깨→아래
+    px(ax+11,ay-17,4,9,skin);         // 전완, 바 그립까지
+    px(ax-3,ay-20,12,7,shorts);       // 허벅지 수평 (무릎 앞으로)
+    px(ax+6,ay-13,4,4,skin);          // 앞다리 정강이
+    px(ax+6,ay-9,4,4,sock);
+    px(ax-3,ay-13,4,4,skin);          // 뒷다리 정강이
+    px(ax-3,ay-9,4,4,sock);
+    foot(ax-4,ay-3,9);
+    foot(ax+5,ay-3,10);
   }
   else if(pose==='pull'){
     // 퍼스트 풀: 바 무릎~허벅지, 팔 아래로
