@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>치즈와 함께 달리기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Galmuri11:wght@400;700&display=swap');
+
+  * {
+    margin:0; padding:0; box-sizing:border-box;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: #1a1526;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:16px;
+    font-family: 'Galmuri11', monospace;
+    color:#f7e9c8;
+  }
+
+  #wrap {
+    width:100%; max-width:900px;
+  }
+
+  #hud {
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom:10px; font-size:13px; letter-spacing:0.5px;
+  }
+  #stageLabel { color:#ffd166; }
+  #hearts { letter-spacing:2px; font-size:16px; }
+
+  canvas {
+    width:100%; display:block;
+    border:3px solid #3d3355;
+    border-radius:4px;
+    image-rendering: pixelated;
+    background:#0f0c18;
+    touch-action: none;
+  }
+
+  #hint {
+    margin-top:10px; font-size:11px; color:#8a7fa8; line-height:1.7;
+    text-align:center;
+  }
+
+  #touch {
+    display:none; margin-top:12px; gap:10px;
+  }
+  #touch button {
+    flex:1; padding:20px; font-family:inherit; font-size:14px;
+    background:#2a2340; color:#f7e9c8; border:2px solid #4a3f6b;
+    border-radius:6px; cursor:pointer;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #touch button:active { background:#3d3355; }
+
+  @media (hover:none) and (pointer:coarse) {
+    #touch { display:flex; }
+    #hint { display:none; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div id="stageLabel">STAGE 1 — 첫 만남</div>
+    <div style="display:flex; gap:14px; align-items:flex-end">
+      <div id="mute" style="cursor:pointer; color:#8a7fa8">♪ ON</div>
+      <div id="hearts">♥♥♥</div>
+    </div>
+  </div>
+  <canvas id="c" width="480" height="270"></canvas>
+  <div id="hint">SPACE / ↑ 점프 &nbsp;·&nbsp; ↓ 숙이기 &nbsp;·&nbsp; M 음소거 &nbsp;·&nbsp; 화면 클릭해서 시작</div>
+  <div id="touch">
+    <button id="btnJump">점프</button>
+    <button id="btnDuck">숙이기</button>
+  </div>
+</div>
+
+<script>
+const c = document.getElementById('c');
+const x = c.getContext('2d');
+x.imageSmoothingEnabled = false;
+
+const W = 480, H = 270;
+const GROUND = 210;
+
+// ---------- 스테이지 정의 ----------
+const STAGES = [
+  {
+    name:'부여 단풍놀이',
+    sub:'2025.11 · 제대로 된 첫 데이트',
+    sky:'#8ec4e0', far:'#b8a878', mid:'#9a8a5c', ground:'#a89250',
+    accent:'#e8531f',
+    theme:'autumn',
+    dist:2600,
+    speed:2.6,
+    msg:['커플 후드 맞춰 입고', '단풍 아래를 걸었던 날'],
+    outfit:'hoodie',
+  },
+  {
+    name:'무창포 크리스마스',
+    sub:'2025.12 · 다이소 털어서 꾸민 밤',
+    sky:'#b8bcc4', far:'#8e95a3', mid:'#6f7787', ground:'#e8ecf0',
+    accent:'#d94f5a',
+    theme:'winter',
+    dist:3200,
+    speed:3.1,
+    msg:['소품 사다 꾸미고 요리하고', '그날 바다는 추웠지만'],
+    outfit:'fleece',
+  },
+];
+
+let stageIdx = 0;
+let state = 'title'; // title | play | clear | ending | dead
+let lives = 3;
+let dist = 0;
+let speed = 2.6;
+let t = 0;
+let shake = 0;
+
+// ---------- 플레이어(남자친구) ----------
+const bf = { x:70, y:GROUND, vy:0, ducking:false, onGround:true, h:34, invuln:0 };
+// ---------- 치즈(고양이, 따라옴) ----------
+const cat = { x:36, y:GROUND, vy:0, onGround:true, ducking:false, trail:[] };
+
+const GRAV = 0.62;
+const JUMP = -10.2;
+
+const FISH_PER_HEART = 5;   // 생선 5마리 = 하트 1개 회복
+let fish = 0;               // 현재 스테이지에서 먹은 생선
+
+let obstacles = [];
+let items = [];
+let particles = [];
+let spawnTimer = 0;
+
+// ---------- 사운드 (WebAudio, 파일 없음) ----------
+let AC = null, muted = false;
+
+function audioInit(){
+  if(!AC){
+    try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(_){ return; }
+  }
+  if(AC.state === 'suspended') AC.resume();
+}
+
+function beep(freq, dur, type='square', vol=0.12, slide=0){
+  if(!AC || muted) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, AC.currentTime);
+  if(slide) o.frequency.linearRampToValueAtTime(Math.max(40, freq+slide), AC.currentTime+dur);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(); o.stop(AC.currentTime+dur);
+}
+
+const sfx = {
+  jump(){ beep(280, 0.14, 'square', 0.1, 260); },
+  eat(){ beep(660, 0.07, 'square', 0.1); setTimeout(()=>beep(880, 0.1, 'square', 0.1), 60); },
+  hit(){ beep(200, 0.25, 'sawtooth', 0.16, -130); },
+  heal(){ [523,659,784].forEach((f,i)=>setTimeout(()=>beep(f, 0.12, 'triangle', 0.13), i*90)); },
+  clear(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f, 0.16, 'square', 0.1), i*130)); },
+  dead(){ [392,330,262,196].forEach((f,i)=>setTimeout(()=>beep(f, 0.2, 'triangle', 0.13), i*160)); },
+};
+
+// BGM — 스테이지별 짧은 루프 멜로디 (0 = 쉼표)
+const BGM = {
+  autumn: [392,0,440,494, 587,0,494,440, 392,0,440,494, 587,659,587,0],
+  winter: [659,0,659,0, 659,0,0,0, 659,0,659,0, 659,0,0,0, 659,784,523,587, 659,0,0,0],
+};
+let bgmStep = 0;
+// ponytail: setInterval 스케줄링 — 로파이 느낌엔 충분, 박자 밀림 거슬리면 AC.currentTime 기반으로 교체
+setInterval(()=>{
+  if(!AC || muted || state !== 'play') return;
+  const mel = BGM[STAGES[stageIdx].theme] || BGM.autumn;
+  const f = mel[bgmStep++ % mel.length];
+  if(f) beep(f, 0.14, 'triangle', 0.045);
+}, 230);
+
+const muteEl = document.getElementById('mute');
+function toggleMute(){
+  muted = !muted;
+  muteEl.textContent = muted ? '♪ OFF' : '♪ ON';
+}
+muteEl.addEventListener('pointerdown', e=>{ e.preventDefault(); audioInit(); toggleMute(); });
+
+// ---------- 입력 ----------
+let keyJump = false, keyDuck = false;
+
+function doJump(){
+  audioInit();
+  if(state === 'title'){ startStage(0); return; }
+  if(state === 'dead'){ resetAll(); return; }
+  if(state === 'clear'){ nextStage(); return; }
+  if(state !== 'play') return;
+  if(bf.onGround){
+    bf.vy = JUMP; bf.onGround = false;
+    sfx.jump();
+    for(let i=0;i<6;i++) particles.push({x:bf.x+8,y:GROUND,vx:(Math.random()-.5)*2,vy:-Math.random()*1.5,life:16,col:'#ffffff55'});
+  }
+}
+
+addEventListener('keydown', e=>{
+  if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW'){ e.preventDefault(); if(!keyJump) doJump(); keyJump=true; }
+  if(e.code==='ArrowDown'||e.code==='KeyS'){ e.preventDefault(); keyDuck=true; }
+  if(e.code==='KeyM'){ audioInit(); toggleMute(); }
+});
+addEventListener('keyup', e=>{
+  if(e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW') keyJump=false;
+  if(e.code==='ArrowDown'||e.code==='KeyS') keyDuck=false;
+});
+c.addEventListener('pointerdown', e=>{ e.preventDefault(); doJump(); });
+
+const bj = document.getElementById('btnJump');
+const bd = document.getElementById('btnDuck');
+bj.addEventListener('pointerdown', e=>{ e.preventDefault(); doJump(); });
+bd.addEventListener('pointerdown', e=>{
+  e.preventDefault();
+  keyDuck=true;
+  if(bd.setPointerCapture) { try{ bd.setPointerCapture(e.pointerId); }catch(_){} }
+});
+bd.addEventListener('pointerup', e=>{ e.preventDefault(); keyDuck=false; });
+bd.addEventListener('pointercancel', ()=>{ keyDuck=false; });
+bd.addEventListener('pointerleave', ()=>{ keyDuck=false; });
+
+// iOS 롱프레스 콜아웃 / 우클릭 메뉴 차단
+['contextmenu','selectstart','dragstart'].forEach(ev=>{
+  document.addEventListener(ev, e=>e.preventDefault());
+});
+// 더블탭 확대 차단
+document.addEventListener('gesturestart', e=>e.preventDefault());
+
+// ---------- 픽셀 드로잉 헬퍼 ----------
+function px(px_, py_, w, h, col){ x.fillStyle=col; x.fillRect(px_|0, py_|0, w, h); }
+
+// 남자친구 스프라이트 (12x34 기준, 러닝 애니 2프레임)
+function drawBF(bx, by, ducking, frame, flash){
+  const out = STAGES[stageIdx] ? STAGES[stageIdx].outfit : 'hoodie';
+  const skin  = flash ? '#ffffff' : '#f2cba6';
+  const hair  = flash ? '#ffffff' : '#241d1a';
+  const shoe  = flash ? '#ffffff' : (out==='hoodie' ? '#f0a838' : '#8a8578');  // 노랑 나이키 / 회색
+
+  // 스테이지별 의상
+  let top, topD, pants;
+  if(out === 'hoodie'){
+    top   = flash ? '#ffffff' : '#2f5c46';   // 진초록 후드
+    topD  = flash ? '#ffffff' : '#234838';
+    pants = flash ? '#ffffff' : '#d8cba8';   // 베이지 카고
+  } else {
+    top   = flash ? '#ffffff' : '#3b3a5c';   // 네이비 패턴 플리스
+    topD  = flash ? '#ffffff' : '#2a2942';
+    pants = flash ? '#ffffff' : '#8fa8c4';   // 연청바지
+  }
+
+  if(ducking){
+    const y = by - 18;
+    px(bx-2, y, 14, 5, hair);
+    px(bx, y+4, 10, 5, skin);
+    px(bx+1, y+5, 4, 3, '#c8c8d0');
+    px(bx+6, y+5, 4, 3, '#c8c8d0');
+    px(bx+2, y+6, 2, 1, '#1a1a1a');
+    px(bx+7, y+6, 2, 1, '#1a1a1a');
+    px(bx-2, y+9, 16, 7, top);
+    px(bx-2, y+12, 16, 1, topD);
+    if(out==='fleece'){ px(bx+2, y+10, 2, 2, topD); px(bx+9, y+13, 2, 2, topD); }
+    px(bx-1, y+16, 14, 4, pants);
+    px(bx-2, y+20, 6, 3, shoe);
+    px(bx+8, y+20, 6, 3, shoe);
+    return;
+  }
+
+  const y = by - 34;
+  // 머리
+  px(bx, y, 12, 4, hair);
+  px(bx-1, y+1, 14, 4, hair);
+  px(bx+1, y+5, 10, 6, skin);
+  px(bx+1, y+4, 10, 2, hair);
+  // 은테 안경
+  px(bx+1, y+6, 4, 3, '#c8c8d0');
+  px(bx+7, y+6, 4, 3, '#c8c8d0');
+  px(bx+5, y+7, 2, 1, '#c8c8d0');
+  px(bx+2, y+7, 2, 2, '#1a1a1a');
+  px(bx+8, y+7, 2, 2, '#1a1a1a');
+  px(bx+4, y+10, 4, 1, '#c88b7a');
+
+  // 몸
+  px(bx, y+11, 12, 12, top);
+  if(out === 'hoodie'){
+    // 후드 넥 + 끈
+    px(bx, y+11, 12, 3, topD);
+    px(bx+3, y+13, 1, 4, '#e8e0d0');
+    px(bx+8, y+13, 1, 4, '#e8e0d0');
+    // "Not like you" 흰 글씨 느낌
+    px(bx+3, y+17, 6, 1, '#e8e8e0');
+    px(bx+3, y+19, 5, 1, '#e8e8e0');
+  } else {
+    // 플리스 얼룩 패턴
+    px(bx+1, y+13, 3, 3, topD);
+    px(bx+7, y+15, 3, 4, topD);
+    px(bx+4, y+19, 3, 3, topD);
+    px(bx+2, y+11, 8, 1, '#e8e8f0');  // 하이넥
+  }
+  // 팔
+  const arm = frame ? 2 : -2;
+  px(bx-3, y+12+arm, 4, 8, top);
+  px(bx-3, y+19+arm, 4, 3, out==='hoodie' ? topD : skin);
+  px(bx+11, y+12-arm, 4, 8, top);
+  px(bx+11, y+19-arm, 4, 3, out==='hoodie' ? topD : skin);
+  // 다리
+  if(frame){
+    px(bx+1, y+23, 4, 8, pants);
+    px(bx+7, y+23, 4, 6, pants);
+    px(bx, y+31, 6, 3, shoe);
+    px(bx+7, y+29, 6, 3, shoe);
+  } else {
+    px(bx+1, y+23, 4, 6, pants);
+    px(bx+7, y+23, 4, 8, pants);
+    px(bx, y+29, 6, 3, shoe);
+    px(bx+7, y+31, 6, 3, shoe);
+  }
+}
+
+// 치즈 스프라이트 — 흰 바탕 + 주황 얼룩 (bicolor), 얼굴 오른쪽 주황 무늬
+function drawCat(cx, cy, frame, ducking){
+  const wht  = '#fbf6ee';   // 흰 털
+  const shd  = '#e0d6c8';   // 흰 털 그림자
+  const org  = '#d98b45';   // 주황 얼룩
+  const orgL = '#eda85f';   // 밝은 주황
+  const orgD = '#b56d2e';   // 진한 주황
+  const eye  = '#b8cf7a';   // 연초록 눈
+  const nose = '#f0a8ae';
+
+  const h = ducking ? 10 : 14;
+  const y = cy - h;
+
+  // 꼬리 — 주황
+  const tw = Math.sin(t*0.25)*3;
+  px(cx-6, y+4+tw, 3, 3, org);
+  px(cx-8, y+2+tw, 3, 3, org);
+  px(cx-10, y-1+tw, 3, 4, orgL);
+
+  // 몸통 — 흰 바탕
+  px(cx-4, y+4, 14, h-4, wht);
+  // 등 주황 얼룩 (큰 반점 2개)
+  px(cx-3, y+4, 5, 4, org);
+  px(cx+3, y+4, 4, 3, org);
+  px(cx-2, y+5, 3, 2, orgD);
+  // 배·다리 흰색 유지
+  px(cx-4, y+h-2, 14, 2, wht);
+  px(cx-4, y+h-1, 14, 1, shd);
+
+  // 머리 — 흰 바탕
+  px(cx+8, y+1, 9, 8, wht);
+  // 얼굴 오른쪽 주황 무늬 (귀~눈 위)
+  px(cx+13, y+1, 4, 4, org);
+  px(cx+12, y+1, 2, 2, orgL);
+  // 귀 — 주황
+  px(cx+8, y-1, 3, 3, org);
+  px(cx+14, y-1, 3, 3, org);
+  px(cx+9, y, 1, 1, nose);
+  px(cx+15, y, 1, 1, nose);
+  // 눈 — 연초록
+  px(cx+10, y+4, 2, 2, eye);
+  px(cx+14, y+4, 2, 2, eye);
+  px(cx+10, y+4, 1, 1, '#2a2a2a');
+  px(cx+14, y+4, 1, 1, '#2a2a2a');
+  // 코·입
+  px(cx+12, y+6, 2, 1, nose);
+  px(cx+11, y+7, 1, 1, shd);
+  px(cx+14, y+7, 1, 1, shd);
+
+  // 다리 — 흰색
+  if(ducking){
+    px(cx-2, y+h, 12, 2, wht);
+  } else if(frame){
+    px(cx-2, y+h, 3, 3, wht);
+    px(cx+6, y+h, 3, 2, wht);
+    px(cx-2, y+h+2, 3, 1, shd);
+  } else {
+    px(cx-2, y+h, 3, 2, wht);
+    px(cx+6, y+h, 3, 3, wht);
+    px(cx+6, y+h+2, 3, 1, shd);
+  }
+}
+
+// 여자친구 (엔딩용) — 버건디 커플 후드 + 청바지
+function drawGF(gx, gy){
+  const y = gy - 34;
+  const hair  = '#2e2320';
+  const skin  = '#f5d0b0';
+  const hood  = '#6e2438';   // 버건디 후드
+  const hoodD = '#571a2b';
+  const jeans = '#8fa8c4';
+  const shoe  = '#f4f4f2';
+
+  // 머리 (단발)
+  px(gx-2, y, 16, 5, hair);
+  px(gx-3, y+3, 4, 12, hair);
+  px(gx+11, y+3, 4, 12, hair);
+  // 얼굴
+  px(gx+1, y+4, 10, 8, skin);
+  px(gx+1, y+4, 10, 2, hair);
+  px(gx+3, y+7, 2, 2, '#1a1a1a');
+  px(gx+8, y+7, 2, 2, '#1a1a1a');
+  px(gx+5, y+10, 3, 1, '#d4707f');
+  px(gx+2, y+9, 2, 2, '#ffb3c1');
+  px(gx+9, y+9, 2, 2, '#ffb3c1');
+
+  // 버건디 후드 (오버핏)
+  px(gx-1, y+12, 14, 14, hood);
+  px(gx-1, y+12, 14, 3, hoodD);        // 후드 넥
+  px(gx+2, y+14, 1, 4, '#f0e8e0');     // 끈
+  px(gx+8, y+14, 1, 4, '#f0e8e0');
+  px(gx+2, y+18, 6, 1, '#f0e8e0');     // 흰 글씨
+  px(gx+2, y+20, 5, 1, '#f0e8e0');
+  // 소매
+  px(gx-4, y+13, 4, 10, hood);
+  px(gx+12, y+13, 4, 10, hood);
+  px(gx-4, y+23, 4, 3, skin);
+  px(gx+12, y+23, 4, 3, skin);
+
+  // 청바지
+  px(gx, y+26, 5, 8, jeans);
+  px(gx+7, y+26, 5, 8, jeans);
+  px(gx-1, y+31, 6, 3, shoe);
+  px(gx+7, y+31, 6, 3, shoe);
+}
+
+// ---------- 장애물 ----------
+function spawnObstacle(){
+  const r = Math.random();
+  const hard = stageIdx >= 1;
+
+  if(r < 0.34){
+    // 낮은 지상 장애물 (점프)
+    obstacles.push({ x:W+20, y:GROUND-20, w:14+(Math.random()*10|0), h:20, type:'ground' });
+  } else if(r < 0.58){
+    // 공중 장애물 (숙이기)
+    obstacles.push({ x:W+20, y:GROUND-46, w:26, h:14, type:'air' });
+  } else if(r < 0.78){
+    // 높은 지상 장애물
+    obstacles.push({ x:W+20, y:GROUND-30, w:16, h:30, type:'ground' });
+  } else if(r < 0.9 && hard){
+    // 콤보: 점프 직후 숙이기
+    obstacles.push({ x:W+20, y:GROUND-20, w:16, h:20, type:'ground' });
+    obstacles.push({ x:W+20+95, y:GROUND-46, w:26, h:14, type:'air' });
+  } else {
+    // 연속 장애물 2연타
+    obstacles.push({ x:W+20, y:GROUND-20, w:14, h:20, type:'ground' });
+    obstacles.push({ x:W+20+70, y:GROUND-20, w:14, h:20, type:'ground' });
+  }
+
+  // 아이템 (생선)
+  if(Math.random() < 0.45){
+    items.push({ x:W+90+Math.random()*60, y:GROUND-50-Math.random()*30 });
+  }
+}
+
+// ---------- 스테이지 제어 ----------
+function startStage(i){
+  stageIdx = i;
+  state = 'play';
+  dist = 0;
+  speed = STAGES[i].speed;
+  lives = 3;                 // 스테이지마다 하트 리셋 (좌절 방지)
+  fish = 0;
+  obstacles = []; items = []; particles = [];
+  spawnTimer = 50;
+  bf.y = GROUND; bf.vy = 0; bf.onGround = true; bf.invuln = 60;
+  cat.trail = [];
+  updateHUD();
+}
+function nextStage(){
+  if(stageIdx < STAGES.length-1) startStage(stageIdx+1);
+  else { state='ending'; t=0; }
+}
+function resetAll(){
+  startStage(stageIdx);   // 죽으면 현재 스테이지만 다시
+}
+function updateHUD(){
+  document.getElementById('stageLabel').textContent =
+    `STAGE ${stageIdx+1}/${STAGES.length} — ${STAGES[stageIdx].name}`;
+  document.getElementById('hearts').textContent =
+    '♥'.repeat(Math.max(0,lives)) + '♡'.repeat(Math.max(0,3-lives));
+}
+
+// ---------- 배경 ----------
+let bgOff = 0;
+let flakes = [];
+for(let i=0;i<50;i++){
+  flakes.push({x:Math.random()*W, y:Math.random()*H, s:0.3+Math.random()*0.9, r:Math.random()*6, sw:Math.random()*2});
+}
+
+function drawBG(){
+  const s = STAGES[stageIdx];
+  x.fillStyle = s.sky; x.fillRect(0,0,W,H);
+
+  if(s.theme === 'winter'){
+    // 흐린 겨울 하늘 (사진처럼 회백색)
+    for(let i=0;i<10;i++){
+      x.fillStyle = `rgba(255,255,255,${0.04*i})`;
+      x.fillRect(0, i*14, W, 14);
+    }
+  } else {
+    // 맑은 가을 낮하늘 (사진처럼 파랑)
+    for(let i=0;i<10;i++){
+      x.fillStyle = `rgba(255,255,255,${0.045*i})`;
+      x.fillRect(0, i*14, W, 14);
+    }
+    // 구름
+    for(let i=0;i<3;i++){
+      const cx2 = (i*190 - bgOff*0.08) % (W+120);
+      const px2 = (cx2+W+120)%(W+120) - 60;
+      x.fillStyle='#ffffff88';
+      x.fillRect(px2, 30+i*18, 40, 8);
+      x.fillRect(px2+10, 25+i*18, 22, 8);
+    }
+  }
+
+  // 먼 산
+  x.fillStyle = s.far;
+  for(let i=-1;i<5;i++){
+    const mx = i*140 - (bgOff*0.25 % 140);
+    x.beginPath();
+    x.moveTo(mx, GROUND); x.lineTo(mx+70, 118); x.lineTo(mx+140, GROUND); x.fill();
+  }
+
+  // 중간 언덕 (낮게 — 앞의 오브젝트를 가리지 않도록)
+  x.fillStyle = s.mid;
+  for(let i=-1;i<7;i++){
+    const mx = i*100 - (bgOff*0.5 % 100);
+    x.beginPath();
+    x.moveTo(mx, GROUND); x.lineTo(mx+50, 168); x.lineTo(mx+100, GROUND); x.fill();
+  }
+
+  // 테마별 중경 오브젝트
+  if(s.theme === 'autumn'){
+    for(let i=-1;i<5;i++){
+      const tx = i*150 - (bgOff*0.7 % 150);
+      const kind = ((i%3)+3)%3;
+
+      if(kind === 2){
+        // 한옥 (태사공 사당) — 단청 지붕
+        x.fillStyle='#4a4a52'; x.fillRect(tx, GROUND-62, 62, 8);      // 기와
+        x.fillStyle='#5e5e68'; x.fillRect(tx-4, GROUND-56, 70, 4);
+        x.fillStyle='#7fbfa8'; x.fillRect(tx-2, GROUND-52, 66, 6);    // 청록 단청
+        x.fillStyle='#c94f2a'; x.fillRect(tx+2, GROUND-50, 58, 2);    // 붉은 문양
+        for(let k=0;k<7;k++){ x.fillStyle='#e8b93a'; x.fillRect(tx+4+k*8, GROUND-51, 3, 3); }
+        x.fillStyle='#8fd8c0'; x.fillRect(tx+4, GROUND-46, 54, 30);   // 민트 창호
+        for(let k=0;k<6;k++){ x.fillStyle='#6fb89e'; x.fillRect(tx+7+k*9, GROUND-44, 1, 26); }
+        x.fillStyle='#9c4a35';                                        // 붉은 기둥
+        x.fillRect(tx+1, GROUND-46, 5, 46);
+        x.fillRect(tx+28, GROUND-46, 5, 46);
+        x.fillRect(tx+56, GROUND-46, 5, 46);
+        x.fillStyle='#6a6a72'; x.fillRect(tx-2, GROUND-3, 66, 3);     // 돌계단
+      } else {
+        // 단풍나무 / 은행나무
+        const isG = kind === 0;
+        x.fillStyle='#4a3524'; x.fillRect(tx+20, GROUND-44, 5, 44);
+        x.fillStyle = isG ? '#c9d84a' : '#d94824';   // 은행 연두노랑 / 단풍 빨강
+        x.fillRect(tx+6, GROUND-70, 34, 18);
+        x.fillRect(tx+11, GROUND-80, 24, 12);
+        x.fillRect(tx+1, GROUND-58, 44, 10);
+        x.fillStyle = isG ? '#e4ee88' : '#f0733a';
+        x.fillRect(tx+14, GROUND-74, 12, 9);
+        x.fillStyle = isG ? '#a8bb32' : '#a8321a';
+        x.fillRect(tx+4, GROUND-56, 10, 6);
+      }
+    }
+  } else {
+    for(let i=-1;i<4;i++){
+      const tx = i*175 - (bgOff*0.7 % 175);
+
+      if(((i%2)+2)%2 === 0){
+        // 숙소 — 흰 벽 + 회색 지붕 2층집
+        x.fillStyle='#f2f2f0'; x.fillRect(tx, GROUND-52, 56, 52);
+        x.fillStyle='#8e929c';                                     // 지붕
+        for(let k=0;k<15;k++) x.fillRect(tx-3+k*4, GROUND-52-k*1.1, 62-k*4, 3);
+        x.fillStyle='#dfe6ec'; x.fillRect(tx-3, GROUND-54, 62, 3); // 지붕 눈
+        x.fillStyle='#3a3a3a';                                     // 검은 창틀
+        x.fillRect(tx+7, GROUND-44, 17, 14);
+        x.fillRect(tx+33, GROUND-44, 17, 14);
+        x.fillRect(tx+7, GROUND-24, 17, 16);
+        x.fillStyle='#c8d8dc';
+        x.fillRect(tx+9, GROUND-42, 13, 10);
+        x.fillRect(tx+35, GROUND-42, 13, 10);
+        x.fillStyle='#ffdf9a'; x.fillRect(tx+9, GROUND-22, 13, 12); // 불 켜진 창
+        x.fillStyle='#5a4a3a'; x.fillRect(tx+34, GROUND-20, 12, 20);// 문
+      } else {
+        // 흰색 트리 + 알파벳 전구 + 눈사람 전구
+        x.fillStyle='#c8ccd4'; x.fillRect(tx+22, GROUND-14, 5, 14);
+        x.fillStyle='#f4f6f8';
+        x.fillRect(tx+12, GROUND-26, 26, 12);
+        x.fillRect(tx+16, GROUND-38, 18, 13);
+        x.fillRect(tx+20, GROUND-48, 10, 11);
+        x.fillStyle='#dfe4ea';
+        x.fillRect(tx+12, GROUND-16, 26, 2);
+        x.fillRect(tx+16, GROUND-27, 18, 2);
+        // 알파벳 전구 (빨강/노랑/초록)
+        const abc=['#e8453a','#f0c020','#5cc94a','#e8453a'];
+        for(let k=0;k<4;k++){
+          const on = ((t*0.045 + i*1.4 + k) % 4) < 2.6;
+          x.fillStyle = on ? abc[k] : '#c8ccd4';
+          x.fillRect(tx+15+k*6, GROUND-42+((k%2)*10), 4, 5);
+          if(on){ x.fillStyle='#ffffffaa'; x.fillRect(tx+16+k*6, GROUND-41+((k%2)*10), 2, 2); }
+        }
+        // 꼭대기 별
+        x.fillStyle='#f0c020'; x.fillRect(tx+23, GROUND-53, 4, 4);
+        // 눈사람 전구 (산타모자 + 주황코 + 분홍볼)
+        for(let k=0;k<2;k++){
+          const sxp = tx + 46 + k*16, syp = GROUND-20 + Math.sin(t*0.04+k)*2;
+          x.fillStyle='#c8ccd4'; x.fillRect(sxp+3, syp-8, 1, 6);   // 줄
+          x.fillStyle='#fbfbf7'; x.fillRect(sxp, syp, 8, 8);       // 얼굴
+          x.fillStyle='#d94f5a'; x.fillRect(sxp+1, syp-3, 6, 3);   // 산타모자
+          x.fillStyle='#fbfbf7'; x.fillRect(sxp+6, syp-4, 2, 2);   // 방울
+          x.fillStyle='#f2a05a'; x.fillRect(sxp+3, syp+3, 2, 2);   // 주황 코
+          x.fillStyle='#f8c4c8'; x.fillRect(sxp, syp+3, 2, 2); x.fillRect(sxp+6, syp+3, 2, 2); // 볼
+          x.fillStyle='#3a3a3a'; x.fillRect(sxp+2, syp+1, 1, 1); x.fillRect(sxp+5, syp+1, 1, 1);
+          x.fillRect(sxp+2, syp+6, 1, 1); x.fillRect(sxp+4, syp+6, 1, 1);
+        }
+      }
+    }
+  }
+
+  // 땅
+  x.fillStyle = s.ground; x.fillRect(0, GROUND, W, H-GROUND);
+  if(s.theme === 'winter'){
+    x.fillStyle='#ffffff'; x.fillRect(0, GROUND, W, 6);      // 쌓인 눈
+    x.fillStyle='#cdd6de';
+    for(let i=0;i<22;i++){
+      const gx=(i*38 - bgOff)%(W+40);
+      x.fillRect((gx+W+40)%(W+40)-20, GROUND+12+((i*11)%20), 10, 2);  // 자갈
+    }
+  } else {
+    x.fillStyle='#c4b268'; x.fillRect(0, GROUND, W, 4);      // 마른 잔디
+    x.fillStyle='#8a7538';
+    for(let i=0;i<22;i++){
+      const gx=(i*38 - bgOff)%(W+40);
+      x.fillRect((gx+W+40)%(W+40)-20, GROUND+11+((i*13)%18), 11, 2);
+    }
+    // 바닥에 떨어진 낙엽
+    x.fillStyle='#d94824';
+    for(let i=0;i<12;i++){
+      const gx=(i*67 - bgOff*1.0)%(W+60);
+      x.fillRect((gx+W+60)%(W+60)-30, GROUND+6+((i*17)%12), 3, 2);
+    }
+  }
+  x.fillStyle='#00000022'; x.fillRect(0, GROUND, W, 1);
+
+  // 떨어지는 것 (낙엽 / 눈)
+  flakes.forEach(f=>{
+    f.y += f.s * (s.theme==='winter' ? 0.9 : 0.7);
+    f.x -= speed * 0.3 + Math.sin(t*0.03 + f.sw)*0.4;
+    f.r += 0.06;
+    if(f.y > GROUND){ f.y = -6; f.x = Math.random()*W; }
+    if(f.x < -8) f.x = W+6;
+
+    if(s.theme === 'winter'){
+      x.fillStyle = '#ffffff'+(f.s>0.7?'ee':'99');
+      x.fillRect(f.x|0, f.y|0, 2, 2);
+    } else {
+      const leafCols = ['#d94824','#f0733a','#c9d84a','#e8531f'];
+      x.fillStyle = leafCols[(f.sw*4|0)%4];
+      if(Math.sin(f.r) > 0){ x.fillRect(f.x|0, f.y|0, 4, 2); }
+      else { x.fillRect(f.x|0, f.y|0, 2, 4); }
+    }
+  });
+}
+
+function drawObstacle(o){
+  const s = STAGES[stageIdx];
+  if(o.type==='ground'){
+    if(s.theme === 'autumn'){
+      if(o.w > 20){
+        // 낙엽 더미
+        x.fillStyle='#8a6a30'; x.fillRect(o.x, o.y, o.w, o.h);
+        x.fillStyle='#d94824'; x.fillRect(o.x, o.y, o.w, 6);
+        x.fillStyle='#c9d84a'; x.fillRect(o.x+3, o.y+2, 5, 3);
+        x.fillStyle='#f0733a'; x.fillRect(o.x+o.w-8, o.y+1, 5, 3);
+      } else {
+        // 바위
+        x.fillStyle='#6e6a5e'; x.fillRect(o.x, o.y, o.w, o.h);
+        x.fillStyle='#8b8678'; x.fillRect(o.x, o.y, o.w, 5);
+        x.fillStyle='#4e4a42'; x.fillRect(o.x+2, o.y+9, 4, 3);
+      }
+    } else {
+      // 겨울 — 눈사람 / 선물상자
+      if(o.h > 24){
+        // 눈사람 (사진 속 전구 눈사람 디자인)
+        x.fillStyle='#fbfbf7'; x.fillRect(o.x+1, o.y+14, o.w-2, o.h-14);
+        x.fillRect(o.x+3, o.y+4, o.w-6, 12);
+        x.fillStyle='#d94f5a'; x.fillRect(o.x+3, o.y, o.w-6, 4);   // 산타모자
+        x.fillStyle='#fbfbf7'; x.fillRect(o.x+o.w-6, o.y-2, 3, 3); // 방울
+        x.fillStyle='#f8c4c8';                                     // 분홍 볼
+        x.fillRect(o.x+3, o.y+8, 2, 2); x.fillRect(o.x+o.w-5, o.y+8, 2, 2);
+        x.fillStyle='#3a3a3a';                                     // 점 눈
+        x.fillRect(o.x+5, o.y+6, 1, 2); x.fillRect(o.x+9, o.y+6, 1, 2);
+        x.fillRect(o.x+5, o.y+12, 1, 1); x.fillRect(o.x+7, o.y+13, 1, 1); x.fillRect(o.x+9, o.y+12, 1, 1);
+        x.fillStyle='#f2a05a'; x.fillRect(o.x+6, o.y+9, 3, 2);     // 주황 코
+      } else {
+        // 선물 상자
+        x.fillStyle='#c94f5a'; x.fillRect(o.x, o.y, o.w, o.h);
+        x.fillStyle='#ffd166'; x.fillRect(o.x+o.w/2-2, o.y, 4, o.h);
+        x.fillStyle='#ffd166'; x.fillRect(o.x, o.y+o.h/2-2, o.w, 4);
+        x.fillStyle='#ffe89a'; x.fillRect(o.x+o.w/2-5, o.y-4, 10, 5);
+      }
+    }
+  } else if(o.type==='air'){
+    if(s.theme === 'autumn'){
+      // 새
+      const flap = Math.sin(t*0.3) > 0;
+      x.fillStyle='#3d2e24'; x.fillRect(o.x+8, o.y+5, 12, 6);
+      x.fillRect(o.x+18, o.y+3, 6, 5);
+      x.fillStyle='#f0f0f0'; x.fillRect(o.x+21, o.y+4, 2, 2);
+      x.fillStyle='#ffb347'; x.fillRect(o.x+24, o.y+5, 3, 2);
+      x.fillStyle='#5a4436';
+      if(flap) x.fillRect(o.x+2, o.y, 12, 5);
+      else x.fillRect(o.x+2, o.y+8, 12, 5);
+    } else {
+      // 매달린 알파벳 전구 + 눈사람 전구
+      x.fillStyle='#c8ccd4'; x.fillRect(o.x+5, o.y-8, 1, 10);
+      x.fillStyle='#5cc94a'; x.fillRect(o.x+2, o.y+1, 7, 9);   // 알파벳 전구
+      x.fillStyle='#a8ee98'; x.fillRect(o.x+3, o.y+2, 3, 3);
+      x.fillStyle='#c8ccd4'; x.fillRect(o.x+18, o.y-8, 1, 8);
+      x.fillStyle='#fbfbf7'; x.fillRect(o.x+14, o.y, 8, 8);    // 눈사람 전구
+      x.fillStyle='#d94f5a'; x.fillRect(o.x+15, o.y-3, 6, 3);
+      x.fillStyle='#f2a05a'; x.fillRect(o.x+17, o.y+3, 2, 2);
+      x.fillStyle='#f8c4c8'; x.fillRect(o.x+14, o.y+3, 2, 2); x.fillRect(o.x+20, o.y+3, 2, 2);
+      x.fillStyle='#3a3a3a'; x.fillRect(o.x+16, o.y+1, 1, 1); x.fillRect(o.x+19, o.y+1, 1, 1);
+    }
+  }
+}
+
+function drawItem(it){
+  const bob = Math.sin(t*0.15 + it.x*0.05)*3;
+  const yy = it.y + bob;
+  // 생선
+  x.fillStyle='#9ad8f0'; x.fillRect(it.x, yy, 12, 6);
+  x.fillStyle='#7ac4e0'; x.fillRect(it.x+2, yy+2, 8, 2);
+  x.fillStyle='#9ad8f0'; x.fillRect(it.x-4, yy+1, 4, 4);
+  x.fillStyle='#2a2a2a'; x.fillRect(it.x+8, yy+1, 2, 2);
+  // 반짝
+  x.fillStyle = 'rgba(255,255,255,'+(0.3+Math.sin(t*0.2)*0.3)+')';
+  x.fillRect(it.x+4, yy-4, 2, 2);
+}
+
+// ---------- 텍스트 ----------
+function text(str, cx_, cy_, size, col, align='center'){
+  x.font = size+'px Galmuri11, monospace';
+  x.textAlign = align;
+  x.fillStyle = col;
+  x.fillText(str, cx_, cy_);
+}
+
+// ---------- 루프 ----------
+function loop(){
+  t++;
+  x.save();
+  if(shake > 0){ x.translate((Math.random()-.5)*shake, (Math.random()-.5)*shake); shake -= 0.5; }
+
+  if(state === 'title'){
+    drawBG();
+    drawCat(180, GROUND, (t>>4)&1, false);
+    drawBF(240, GROUND, false, (t>>4)&1, false);
+    x.fillStyle='#00000088'; x.fillRect(0,60,W,90);
+    text('치즈와 함께 달리기', W/2, 100, 24, '#ffd166');
+    text('점프와 숙이기로 장애물을 피하세요', W/2, 126, 11, '#f7e9c8');
+    if((t>>4)&1) text('▶ 클릭 또는 SPACE', W/2, 180, 13, '#8be0d8');
+  }
+
+  else if(state === 'play'){
+    bgOff += speed;
+    dist += speed;
+    // 스테이지 후반으로 갈수록 조금씩 빨라짐
+    speed = STAGES[stageIdx].speed + (dist / STAGES[stageIdx].dist) * 1.3;
+
+    // 플레이어 물리
+    bf.ducking = keyDuck && bf.onGround;
+    bf.vy += GRAV;
+    bf.y += bf.vy;
+    if(bf.y >= GROUND){ bf.y = GROUND; bf.vy = 0; bf.onGround = true; }
+    if(bf.invuln > 0) bf.invuln--;
+
+    // 고양이 따라오기 (0.35초 지연)
+    cat.trail.push({y:bf.y, duck:bf.ducking});
+    if(cat.trail.length > 20) cat.trail.shift();
+    const tr = cat.trail[0] || {y:GROUND, duck:false};
+    cat.y = tr.y; cat.ducking = tr.duck;
+
+    // 스폰
+    spawnTimer--;
+    if(spawnTimer <= 0){
+      spawnObstacle();
+      spawnTimer = 55 + Math.random()*50 - stageIdx*6;
+    }
+
+    // 이동 + 충돌
+    const bfBox = bf.ducking
+      ? { x:bf.x-2, y:bf.y-18, w:16, h:18 }
+      : { x:bf.x, y:bf.y-34, w:12, h:34 };
+
+    for(let i=obstacles.length-1;i>=0;i--){
+      const o = obstacles[i];
+      o.x -= speed;
+      if(o.x < -60){ obstacles.splice(i,1); continue; }
+
+      if(bf.invuln<=0 &&
+         bfBox.x < o.x+o.w && bfBox.x+bfBox.w > o.x &&
+         bfBox.y < o.y+o.h && bfBox.y+bfBox.h > o.y){
+        lives--; bf.invuln = 90; shake = 8;
+        sfx.hit();
+        for(let k=0;k<14;k++) particles.push({x:bf.x+6,y:bf.y-16,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,life:24,col:'#ff6b6b'});
+        updateHUD();
+        obstacles.splice(i,1);
+        if(lives<=0){ state='dead'; t=0; sfx.dead(); }
+      }
+    }
+
+    for(let i=items.length-1;i>=0;i--){
+      const it = items[i];
+      it.x -= speed;
+      if(it.x < -30){ items.splice(i,1); continue; }
+      if(bfBox.x < it.x+12 && bfBox.x+bfBox.w > it.x-4 &&
+         bfBox.y < it.y+14 && bfBox.y+bfBox.h > it.y-6){
+        items.splice(i,1);
+        fish++;
+        sfx.eat();
+        for(let k=0;k<10;k++) particles.push({x:it.x+4,y:it.y+3,vx:(Math.random()-.5)*3,vy:-Math.random()*3,life:26,col:'#ffd166'});
+        // 5마리마다 치즈가 하트를 물어다 줌
+        if(fish % FISH_PER_HEART === 0 && lives < 3){
+          lives++;
+          sfx.heal();
+          for(let k=0;k<14;k++) particles.push({x:bf.x+6,y:bf.y-30,vx:(Math.random()-.5)*3,vy:-Math.random()*2.5,life:32,col:'#ff9ec4'});
+          updateHUD();
+        }
+      }
+    }
+
+    // 스테이지 클리어
+    if(dist >= STAGES[stageIdx].dist){ state='clear'; t=0; sfx.clear(); }
+
+    // 그리기
+    drawBG();
+    items.forEach(drawItem);
+    obstacles.forEach(drawObstacle);
+    drawCat(cat.x, cat.y, (t>>3)&1, cat.ducking);
+    drawBF(bf.x, bf.y, bf.ducking, (t>>3)&1, bf.invuln>0 && (t>>2)&1);
+
+    // 파티클
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life--;
+      if(p.life <= 0){ particles.splice(i,1); continue; }
+      x.fillStyle = p.col;
+      x.fillRect(p.x|0, p.y|0, 2, 2);
+    }
+
+    // 생선 카운터 (5마리마다 ♥ 회복)
+    x.fillStyle='#00000066'; x.fillRect(10, 9, 62, 12);
+    x.fillStyle='#9ad8f0'; x.fillRect(14, 12, 10, 5);
+    x.fillStyle='#9ad8f0'; x.fillRect(11, 13, 3, 3);
+    x.fillStyle='#2a2a2a'; x.fillRect(21, 13, 2, 2);
+    text('× '+fish, 29, 19, 10, '#f7e9c8', 'left');
+
+    // 진행 바
+    const p = Math.min(1, dist/STAGES[stageIdx].dist);
+    x.fillStyle='#00000066'; x.fillRect(W-126, 11, 114, 8);
+    x.fillStyle=STAGES[stageIdx].accent; x.fillRect(W-124, 13, 110*p, 4);
+    x.fillStyle='#ffffff'; x.fillRect(W-124+110*p-1, 10, 2, 10);
+  }
+
+  else if(state === 'clear'){
+    const s = STAGES[stageIdx];
+    drawBG();
+    drawCat(195, GROUND, 0, false);
+    drawBF(245, GROUND, false, 0, false);
+    x.fillStyle='#000000bb'; x.fillRect(0,58,W,124);
+    text(s.name, W/2, 86, 19, s.accent);
+    text(s.sub, W/2, 106, 10, '#a99cc4');
+    text(s.msg[0], W/2, 132, 12, '#f7e9c8');
+    text(s.msg[1], W/2, 150, 12, '#f7e9c8');
+    text('치즈가 먹은 생선 × '+fish, W/2, 165, 9, '#9ad8f0');
+    if((t>>4)&1) text('▶ 클릭해서 계속', W/2, 177, 11, '#8be0d8');
+  }
+
+  else if(state === 'dead'){
+    drawBG();
+    x.fillStyle='#00000099'; x.fillRect(0,80,W,100);
+    text('치즈가 기다리고 있어요', W/2, 115, 18, '#ff9ec4');
+    if((t>>4)&1) text('▶ 클릭해서 다시 시작', W/2, 152, 12, '#8be0d8');
+  }
+
+  else if(state === 'ending'){
+    // 엔딩: 셋이 함께
+    x.fillStyle='#2b1f3d'; x.fillRect(0,0,W,H);
+    // 반짝이
+    for(let i=0;i<40;i++){
+      const sx = (i*61 + Math.sin(t*0.02+i)*20) % W;
+      const sy = (i*43 + t*0.4) % GROUND;
+      x.fillStyle = i%3===0 ? '#ffd16688' : '#ffffff44';
+      x.fillRect(sx, sy, 2, 2);
+    }
+    x.fillStyle='#6b4a80'; x.fillRect(0, GROUND, W, H-GROUND);
+    x.fillStyle='#ffffff22'; x.fillRect(0, GROUND, W, 2);
+
+    const bob = Math.sin(t*0.08)*2;
+    drawCat(180, GROUND+bob, (t>>4)&1, false);
+    drawBF(225, GROUND-Math.abs(Math.sin(t*0.08))*4, false, (t>>4)&1, false);
+    drawGF(275, GROUND-Math.abs(Math.sin(t*0.08+1))*4);
+
+    // 하트
+    for(let i=0;i<3;i++){
+      const hy = GROUND-60 - ((t*0.8 + i*40) % 90);
+      const hx = 200 + i*40 + Math.sin(t*0.05+i)*8;
+      const a = 1 - ((t*0.8 + i*40) % 90)/90;
+      x.fillStyle = `rgba(255,158,196,${a})`;
+      x.fillRect(hx, hy, 2, 2); x.fillRect(hx+4, hy, 2, 2);
+      x.fillRect(hx-1, hy+2, 8, 2); x.fillRect(hx+1, hy+4, 4, 2);
+      x.fillRect(hx+2, hy+6, 2, 2);
+    }
+
+    text('생일 축하해!', W/2, 60, 28, '#ffd166');
+    text('여기에 편지가 들어갑니다', W/2, 88, 11, '#f7e9c8');
+    if((t>>5)&1) text('▶ 클릭해서 처음부터', W/2, 250, 10, '#a99cc4');
+    if(t>200 && keyJump===false){} // noop
+  }
+
+  x.restore();
+  requestAnimationFrame(loop);
+}
+
+// 엔딩에서 클릭 시 리셋
+c.addEventListener('pointerdown', ()=>{ if(state==='ending' && t>60) { lives=3; state='title'; t=0; } });
+
+updateHUD();
+loop();
+</script>
+</body>
+</html>
