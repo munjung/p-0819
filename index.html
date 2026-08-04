@@ -1397,7 +1397,7 @@ function loop(){
     }
 
     if(phase==='ready'){
-      if((frame>>3)&1) text('READY...', W/2, 120, 11, '#2a2340');
+      if((frame>>3)&1 && repEvent!=='judge') text('READY...', W/2, 120, 11, '#2a2340');   // 저지 땐 탱코등장이 자리 차지
       if(frame>=readyDur()){ phase='run'; frame=0; }
     }
     else if(phase==='run'){
@@ -1437,8 +1437,10 @@ function loop(){
         x.fillRect(0,44,5,H-44); x.fillRect(W-5,44,5,H-44);
         // 경고 문구 빨강↔노랑 점멸
         const evCol = (t>>3)&1 ? '#ff5a5a' : '#ffd23f';
-        text('!! 저지 주목: PERFECT만 인정 !!', W/2+1, 137, 9, '#00000077');
-        text('!! 저지 주목: PERFECT만 인정 !!', W/2, 136, 9, evCol);
+        text('탱코등장!!!', W/2+1, 121, 15, '#00000088');
+        text('탱코등장!!!', W/2, 120, 15, evCol);
+        text('!! PERFECT만 인정 !!', W/2+1, 137, 9, '#00000077');
+        text('!! PERFECT만 인정 !!', W/2, 136, 9, evCol);
         // 매의 눈: 게이지 마커를 따라 동공 이동
         const off = phase==='run'
           ? Math.max(-10, Math.min(10, (frame/repDur-0.5)*22))
