@@ -576,10 +576,6 @@ function drawCheese(cx,cy){
   const wht='#fbf6ee', org='#d98b45', orgL='#eda85f', eye='#b8cf7a';
   const loaf = (t%900) >= 620;         // ~15초 주기로 약 4.5초 식빵
 
-  if((t%450) < 130){                   // 가끔 울음
-    text('냐아아앙--', cx+28, cy-20+Math.sin(t*0.08)*2, 8, '#4a3a28');
-  }
-
   if(loaf){
     // 식빵 자세: 낮고 둥근 몸통, 발 다 숨기고 눈 지그시
     px(cx-7,cy-8,16,8,wht);
@@ -1603,6 +1599,13 @@ function loop(){
       x.fillRect(hx,hy,2,2); x.fillRect(hx+4,hy,2,2);
       x.fillRect(hx-1,hy+2,8,2); x.fillRect(hx+1,hy+4,4,2); x.fillRect(hx+2,hy+6,2,2);
     }
+  }
+
+  // 치즈 울음 (최상위 레이어 — 체육관이 보이는 화면에서만)
+  const gymVisible = state==='title' || state==='intro' || state==='failed'
+    || (state==='play' && curMove!=='wb' && curMove!=='run');
+  if(gymVisible && (t%450)<130){
+    text('냐아아앙--', 58, 324+Math.sin(t*0.08)*2, 8, '#4a3a28');
   }
 
   // 뒤로가기 버튼 (빌더/게임 중)
