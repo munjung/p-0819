@@ -50,12 +50,12 @@ const FLOOR = 360;
 // pw/gw: 퍼펙트/굿 존 반폭, random: 존 위치 랩마다 랜덤
 const WOD = [
   // ponytail: 테스트용 랩 수 (정식: 8/6/8/16/6/10)
-  { move:'snatch', label:'스내치',           weight:95,  reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
+  { move:'snatch', label:'스내치',           weight:75,  wStep:10, reps:3,  dur:92, pw:0.045, gw:0.105, random:false },
   { move:'wb',     label:'월볼샷',            weight:20,  reps:3,  dur:72, pw:0.045, gw:0.100, random:false },
   { move:'bmu',    label:'바 머슬업',         weight:0,   reps:3,  dur:78, pw:0.040, gw:0.100, random:true  },
   { move:'du',     label:'더블언더',          weight:0,   reps:3,  dur:34, pw:0.050, gw:0.110, random:false },
-  { move:'cj',     label:'클린&저크',         weight:135, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
-  { move:'alt',    label:'스내치 135lb + 머슬업', weight:135, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
+  { move:'cj',     label:'클린&저크',         weight:115, wStep:10, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
+  { move:'alt',    label:'스내치 155lb + 머슬업', weight:155, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
 ];
 
 let state = 'title';   // title | intro | play | done
@@ -122,12 +122,16 @@ c.addEventListener('pointerdown', e=>{ e.preventDefault(); action(); });
 document.addEventListener('gesturestart', e=>e.preventDefault());
 
 // ---------- 진행 ----------
-function curWeight(){ return WOD[roundIdx].weight; }
+function curWeight(){    // 랩마다 점진적 증량 (wStep)
+  const r = WOD[roundIdx];
+  return r.weight ? r.weight + (r.wStep||0)*repIdx : 0;
+}
 function readyDur(){ return curMove==='du' ? 10 : (curMove==='wb' ? 24 : 32); }
 function resultDur(){
   const ok = judgment && judgment.pts>0;
   if(curMove==='du') return ok ? 12 : 30;
   if(curMove==='wb') return ok ? 26 : 32;
+  if(curMove==='bmu') return ok ? 74 : 42;   // 할로우~서포트 풀 시퀀스
   return ok ? 56 : 42;
 }
 function pickMove(){
@@ -287,16 +291,32 @@ function drawGym(){
   px(58,FLOOR-12,10,12,'#3a6ad4');
 }
 
-// ---------- 바벨 (95lb=초록 25s, 135lb=파랑 45s) ----------
+// ---------- 바벨: 무게에서 플레이트 조합 자동 계산 (바 45lb + 사이드) ----------
+function plateStack(side){
+  const P=[45,35,25,15,10], res=[];
+  let s=side;
+  while(s>0){
+    const p=P.find(v=>v<=s && s-v!==5);   // 5lb 잔여 방지
+    if(!p) break;
+    res.push(p); s-=p;
+  }
+  return res;
+}
 function drawBarbell(bx, by, lb){
-  const heavy = lb>=115;
-  const plate  = heavy ? '#2a6ad4' : '#4ea84a';
-  const plateD = heavy ? '#1e4fa8' : '#3a8438';
-  const ph = heavy ? 20 : 16;
-  px(bx-36,by-ph/2,9,ph,plate);  px(bx-34,by-ph/2+3,5,ph-6,plateD);
-  px(bx+27,by-ph/2,9,ph,plate);  px(bx+29,by-ph/2+3,5,ph-6,plateD);
-  px(bx-27,by-1,54,2,'#6a6a72');           // 얇고 어두운 샤프트
+  const SZ={45:[9,20],35:[8,18],25:[7,16],15:[6,13],10:[5,11]};
+  const CL={45:'#2a6ad4',35:'#e8c22a',25:'#4ea84a',15:'#9a9aa2',10:'#1e1e22'};
+  const CD={45:'#1e4fa8',35:'#c09a1e',25:'#3a8438',15:'#7e7e88',10:'#0a0a0e'};
+  px(bx-27,by-1,54,2,'#6a6a72');           // 샤프트
   px(bx-27,by-1,54,1,'#8a8a92');
+  let off=27;
+  plateStack(Math.max(0,(lb-45)/2)).forEach(p=>{   // 큰 플레이트부터 안쪽에
+    const w=SZ[p][0], h=SZ[p][1];
+    px(bx+off,by-h/2,w,h,CL[p]);   px(bx+off+2,by-h/2+3,w-4,h-6,CD[p]);
+    px(bx-off-w,by-h/2,w,h,CL[p]); px(bx-off-w+2,by-h/2+3,w-4,h-6,CD[p]);
+    off+=w+1;
+  });
+  px(bx+off,by-3,3,6,'#8a8a92');           // 마구리
+  px(bx-off-3,by-3,3,6,'#8a8a92');
 }
 
 // ---------- 상품: TYR CXT-2 (화이트/검솔, 파인 디테일 90x40) ----------
@@ -523,6 +543,28 @@ function drawAthlete(ax, ay, pose, opt){
     legF(0,-20,8,20); legF(10,-20,8,20);
     footF(-2,0,12); footF(10,0,12);
   }
+  else if(pose==='hollow'){
+    // 할로우: 어깨 뒤로 빠지고 다리는 앞으로 (접시 모양)
+    L(-6,4,6,26,skin);  L(18,4,6,26,skin);
+    gripF(-6,-2,6); gripF(18,-2,6);
+    headF(-4,26);
+    jerseyF(0,46,22,24);
+    L(10,70,14,10,shorts);              // 허벅지 앞으로
+    L(18,80,8,10,skin);
+    L(24,88,8,10,sock);
+    footF(26,98,12);
+  }
+  else if(pose==='hipdrive'){
+    // 힙 드라이브: 힙을 바 쪽으로, 몸 수평, 발끝 위로 킥
+    L(-6,4,6,16,skin);  L(18,4,6,16,skin);   // 당기면서 팔 짧아짐
+    gripF(-6,-2,6); gripF(18,-2,6);
+    headF(-10,14);
+    jerseyF(-4,20,26,18);                    // 몸통 수평
+    L(20,26,12,12,shorts);                   // 힙~허벅지 바 쪽
+    L(26,14,8,12,skin);
+    L(30,4,8,10,sock);
+    footF(32,-6,12);                         // 발끝이 바 높이까지
+  }
   else if(pose==='rack'){
     // 프론트 랙: 바 어깨 위, 팔꿈치 전방
     headF(0,-104);
@@ -688,15 +730,18 @@ function drawScene(){
   else if(curMove==='bmu'){
     drawRig(AX+5, RIG_Y);
     if(phase==='ready' || phase==='run'){
-      // 대기 중에도 살짝 스윙
-      const sw = Math.sin(t*0.1)*2;
-      drawAthlete(AX+sw, RIG_Y, 'hang');
+      // 대기 중 스윙: 할로우 ↔ 아치 왕복
+      const sw = Math.sin(t*0.1);
+      const swingPose = sw>0.35 ? 'kip' : (sw<-0.35 ? 'hollow' : 'hang');
+      drawAthlete(AX+sw*3, RIG_Y, swingPose);
     } else {
       if(judgment && judgment.pts>0){
-        // 킵 → 하이풀 → 트랜지션 → 서포트
-        if(frame<10) drawAthlete(AX, RIG_Y, 'kip');
-        else if(frame<20) drawAthlete(AX, RIG_Y, 'pullup');
-        else if(frame<30) drawAthlete(AX, RIG_Y-2, 'dip');
+        // 할로우 → 아치 → 힙드라이브 → 하이풀 → 트랜지션 → 서포트
+        if(frame<8) drawAthlete(AX, RIG_Y, 'hollow');
+        else if(frame<16) drawAthlete(AX, RIG_Y, 'kip');
+        else if(frame<26) drawAthlete(AX, RIG_Y, 'hipdrive');
+        else if(frame<36) drawAthlete(AX, RIG_Y, 'pullup');
+        else if(frame<46) drawAthlete(AX, RIG_Y-2, 'dip');
         else drawAthlete(AX, RIG_Y-2, 'support');
       } else {
         drawAthlete(AX, RIG_Y, 'hang');
@@ -784,7 +829,7 @@ function loop(){
     const r = WOD[roundIdx];
     x.fillStyle='rgba(0,0,0,0.55)'; x.fillRect(0,140,W,110);
     text('ROUND '+(roundIdx+1), W/2, 168, 13, '#8be0d8');
-    text(r.label+(r.weight&&r.move!=='alt'?' '+r.weight+'lb':''), W/2, 194, 15, '#ffd23f');
+    text(r.label+(r.weight&&r.move!=='alt'?' '+r.weight+'lb'+(r.wStep?'+':''):''), W/2, 194, 15, '#ffd23f');
     text('× '+r.reps, W/2, 214, 12, '#ffd23f');
     if(r.random) text('!! 판정 존이 랩마다 움직임 !!', W/2, 232, 9, '#ff9ec4');
     const cnt = 3 - (frame/30|0);
