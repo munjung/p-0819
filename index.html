@@ -619,11 +619,16 @@ function drawWbScene(){
     x.strokeStyle='#ffd23f'; x.lineWidth=3;
     x.beginPath(); x.arc(135,150,12+(frame-9)*3,0,Math.PI*2); x.stroke();
   }
-  if(!gone){                        // 월볼 (버건디 + 심 라인)
+  if(!gone){                        // 월볼 (버건디 + 20lb 주황 띠)
     x.fillStyle='#8a3a3a'; x.beginPath(); x.arc(bx,by,br,0,Math.PI*2); x.fill();
+    x.save();
+    x.beginPath(); x.arc(bx,by,br,0,Math.PI*2); x.clip();
+    px(bx-br,by-br*0.3,br*2,br*0.6,'#f2803a');            // 주황 띠
+    px(bx-br,by-br*0.3,br*2,2,'#d96a28');
+    px(bx-br,by+br*0.3-2,br*2,2,'#d96a28');
+    x.restore();
     px(bx-1,by-br,2,br*2,'#6a2a2a');
-    px(bx-br,by-1,br*2,2,'#6a2a2a');
-    x.fillStyle='#a85050'; x.beginPath(); x.arc(bx-br*0.35,by-br*0.35,br*0.25,0,Math.PI*2); x.fill();
+    x.fillStyle='#a85050'; x.beginPath(); x.arc(bx-br*0.35,by-br*0.45,br*0.22,0,Math.PI*2); x.fill();
   }
 
   // 1인칭 팔 (공 던지면 아래에서 대기)
