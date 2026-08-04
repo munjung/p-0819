@@ -314,10 +314,10 @@ function buildShareCard(){
     drawShoe(90, 226);
     text('★ TYR CXT-3 획득! ★', 135, 288, 11, '#ffd23f');
   }
-  // 선수 (승리 포즈, 선택한 캐릭터)
+  // 선수 (브이 포즈, 선택한 캐릭터)
   x.save();
   x.translate(222,316); x.scale(1.3,1.3); x.translate(-222,-316);
-  drawAthlete(222, 316, 'ohstand');
+  drawAthlete(222, 316, 'victory');
   x.restore();
   text(new Date().toISOString().slice(0,10)+' · CROSSFIT ARCADE', 135, 336, 8, '#7a7292');
   x = old;
@@ -961,6 +961,18 @@ function drawAthlete(ax, ay, pose, opt){
     L(26,14,8,12,shin);
     L(30,4,8,10,sock);
     footF(32,-6,12);                         // 발끝이 바 높이까지
+  }
+  else if(pose==='victory'){
+    // 기념샷: 한 손 브이 ✌
+    headF(0,-104);
+    jerseyF(-2,-86,24,28);
+    L(-8,-84,8,18,skin);                 // 왼팔 내림
+    L(22,-84,8,10,skin);                 // 오른팔 굽혀 올림
+    L(26,-96,8,14,skin);
+    L(26,-105,3,8,skin);                 // V 손가락
+    L(31,-105,3,8,skin);
+    legF(0,-58,10,52); legF(12,-58,10,52);
+    footF(-2,-6,14); footF(12,-6,14);
   }
   else if(pose==='rack'){
     // 프론트 랙: 바 어깨 위, 팔꿈치 전방
