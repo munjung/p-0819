@@ -878,6 +878,46 @@ function drawMeter(p){
   text('TIMING', 135, my-10, 8, '#7a7292');
 }
 
+// ---------- 빌더 종목 아이콘 (18x18) ----------
+function drawMoveIcon(m, ix, iy){
+  if(m.move==='snatch'){                 // 바벨 (초록 플레이트)
+    px(ix,iy+7,18,2,'#8a8a92');
+    px(ix+1,iy+4,3,8,'#4ea84a');
+    px(ix+14,iy+4,3,8,'#4ea84a');
+  } else if(m.move==='cj'){              // 바벨 (파랑 대형 플레이트)
+    px(ix,iy+8,18,2,'#8a8a92');
+    px(ix+1,iy+3,4,12,'#2a6ad4');
+    px(ix+13,iy+3,4,12,'#2a6ad4');
+  } else if(m.move==='wb'){              // 월볼 (주황 띠)
+    x.fillStyle='#8a3a3a';
+    x.beginPath(); x.arc(ix+9,iy+9,7,0,Math.PI*2); x.fill();
+    px(ix+3,iy+7,12,4,'#f2803a');
+  } else if(m.move==='bmu'){             // 철봉 + 매달린 사람
+    px(ix+1,iy+2,16,2,'#3a6ad4');
+    px(ix+1,iy+2,2,14,'#e8e6e0');
+    px(ix+15,iy+2,2,14,'#e8e6e0');
+    px(ix+7,iy+4,1,4,'#f2cba6'); px(ix+10,iy+4,1,4,'#f2cba6');
+    px(ix+7,iy+8,4,4,'#f2803a');
+    px(ix+8,iy+12,2,3,'#2e2a3d');
+  } else if(m.move==='du'){              // 줄넘기
+    x.strokeStyle='#8be0d8'; x.lineWidth=1.5;
+    x.beginPath(); x.arc(ix+9,iy+9,7,0,Math.PI*2); x.stroke();
+    px(ix+1,iy+2,2,5,'#f0c020');
+    px(ix+15,iy+2,2,5,'#f0c020');
+  } else if(m.move==='rmu'){             // 링
+    px(ix+4,iy,2,7,'#dcd9d0');
+    px(ix+12,iy,2,7,'#dcd9d0');
+    x.strokeStyle='#b8945a'; x.lineWidth=2;
+    x.beginPath(); x.arc(ix+5,iy+11,4,0,Math.PI*2); x.stroke();
+    x.beginPath(); x.arc(ix+13,iy+11,4,0,Math.PI*2); x.stroke();
+  } else {                               // 콤보 = 번개
+    px(ix+8,iy+1,5,6,'#ffd23f');
+    px(ix+4,iy+6,8,3,'#ffd23f');
+    px(ix+6,iy+9,5,8,'#ffd23f');
+    px(ix+9,iy+9,5,3,'#e8a820');
+  }
+}
+
 // ---------- 루프 ----------
 function loop(){
   t++;
@@ -914,7 +954,8 @@ function loop(){
       const bc = sel>=0?'#ffd23f':'#4a4468';
       px(22,ry,226,2,bc); px(22,ry+28,226,2,bc);
       px(22,ry,2,30,bc);  px(246,ry,2,30,bc);
-      text(m.label, 34, ry+20, 11, '#f0ead8', 'left');
+      drawMoveIcon(m, 30, ry+6);
+      text(m.label, 54, ry+20, 11, '#f0ead8', 'left');
       const info = m.weight ? m.weight+'lb'+(m.wStep?'+':'') : (m.move==='du'?'리듬':'맨몸');
       text(info, 212, ry+20, 9, '#7a7292', 'right');
       if(sel>=0){
