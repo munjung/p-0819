@@ -558,6 +558,29 @@ function drawGym(){
   px(8,FLOOR-16,42,5,'#4a4a52');
   px(10,FLOOR-11,4,11,'#3a3a40'); px(44,FLOOR-11,4,11,'#3a3a40');
   px(58,FLOOR-12,10,12,'#3a6ad4');
+  drawCheese(30, FLOOR-16);          // 벤치 위 치즈
+}
+
+// 치즈 (고양이): 흰 바탕 + 주황 얼룩, 벤치에 앉아 꼬리 살랑
+function drawCheese(cx,cy){
+  const wht='#fbf6ee', org='#d98b45', orgL='#eda85f', eye='#b8cf7a';
+  const tw = Math.sin(t*0.06)*3;
+  px(cx-8,cy-6+tw*0.5,4,3,org);        // 꼬리
+  px(cx-11,cy-9+tw,4,3,orgL);
+  px(cx-5,cy-10,12,10,wht);            // 몸통 (앉음)
+  px(cx-4,cy-10,5,4,org);              // 등 얼룩
+  px(cx-2,cy-17,10,8,wht);             // 머리
+  px(cx+3,cy-17,5,4,org);              // 얼굴 오른쪽 무늬
+  px(cx-2,cy-19,3,3,org);              // 귀
+  px(cx+5,cy-19,3,3,org);
+  if((t%240)<10){                      // 가끔 눈 깜빡
+    px(cx,cy-13,2,1,'#2a2a2a'); px(cx+4,cy-13,2,1,'#2a2a2a');
+  } else {
+    px(cx,cy-14,2,2,eye); px(cx+4,cy-14,2,2,eye);
+    px(cx,cy-14,1,1,'#2a2a2a'); px(cx+4,cy-14,1,1,'#2a2a2a');
+  }
+  px(cx+2,cy-12,2,1,'#f0a8ae');        // 코
+  px(cx-4,cy-3,3,3,wht); px(cx+2,cy-3,3,3,wht);   // 앞발
 }
 
 // ---------- 바벨: 무게에서 플레이트 조합 자동 계산 (바 45lb + 사이드) ----------
