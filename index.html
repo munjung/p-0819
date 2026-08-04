@@ -631,15 +631,15 @@ function drawWbScene(){
     x.fillStyle='#a85050'; x.beginPath(); x.arc(bx-br*0.35,by-br*0.45,br*0.22,0,Math.PI*2); x.fill();
   }
 
-  // 1인칭 팔 (공 던지면 아래에서 대기)
+  // 1인칭 팔 (공 던지면 아래에서 대기) — 소매→전완→손 대각선으로 연결
   const holding = !(phase==='result' && judgment && (judgment.pts>0 || judgment.text==='EARLY!'));
   const hy = holding ? by : 322;
-  px(64, hy+38, 30, Math.max(0, 404-(hy+38)), '#f2803a');   // 왼 소매
-  px(176, hy+38, 30, Math.max(0, 404-(hy+38)), '#f2803a');
-  px(72, hy+10, 18, 32, '#f2cba6');                          // 왼 전완
-  px(180, hy+10, 18, 32, '#f2cba6');
-  px(bx-br-8, hy-6, 15, 20, '#f2cba6');                      // 손 (공 감쌈)
-  px(bx+br-7, hy-6, 15, 20, '#f2cba6');
+  px(58, hy+42, 34, Math.max(0, 404-(hy+42)), '#f2803a');   // 왼 소매
+  px(178, hy+42, 34, Math.max(0, 404-(hy+42)), '#f2803a');
+  px(66,hy+32,20,18,'#f2cba6');   px(80,hy+17,20,18,'#f2cba6');   px(94,hy+2,20,18,'#f2cba6');   // 왼 전완 대각
+  px(184,hy+32,20,18,'#f2cba6');  px(170,hy+17,20,18,'#f2cba6');  px(156,hy+2,20,18,'#f2cba6');  // 오른 전완 대각
+  px(135-br-8, hy-8, 16, 22, '#f2cba6');                     // 손 (공 감쌈)
+  px(135+br-8, hy-8, 16, 22, '#f2cba6');
 }
 
 function drawScene(){
