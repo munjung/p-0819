@@ -204,28 +204,58 @@ function text(str,cx,cy,size,col,align='center'){
   x.font=size+'px Galmuri11, monospace'; x.textAlign=align; x.fillStyle=col; x.fillText(str,cx,cy);
 }
 
-// ---------- 배경: 체육관 (세로) ----------
+// ---------- 배경: 크로스핏 박스 (흰 천장 + OSB 합판 + 파랑 리그) ----------
 function drawGym(){
-  px(0,0,W,H,'#14121c');
-  for(let i=0;i<5;i++) px(i*54,0,1,FLOOR,'#1c1928');
-  // 생일 배너
-  px(15,12,240,24,'#2a2340');
-  px(15,12,240,3,'#3d3355');
-  text('★ HAPPY BIRTHDAY WOD ★', 135, 29, 12, '#ffd23f');
-  // 플레이트 랙 (왼쪽)
-  px(8,FLOOR-46,10,46,'#c94f5a'); px(20,FLOOR-40,8,40,'#4f7cc9'); px(30,FLOOR-32,7,32,'#f0c020');
-  // 케틀벨 (오른쪽)
-  px(236,FLOOR-16,16,16,'#3a3648'); px(240,FLOOR-22,8,8,'#3a3648'); px(242,FLOOR-20,4,4,'#14121c');
-  // 러버 매트 바닥
-  px(0,FLOOR,W,H-FLOOR,'#221e30');
-  for(let i=0;i<5;i++) px(i*60,FLOOR,1,H-FLOOR,'#2a2540');
-  px(0,FLOOR,W,2,'#332e48');
-  // 조명
-  for(let i=0;i<2;i++){
-    px(50+i*130,0,40,6,'#3a3648');
-    x.fillStyle='rgba(255,240,200,0.03)';
-    x.beginPath(); x.moveTo(50+i*130,6); x.lineTo(30+i*130,FLOOR); x.lineTo(110+i*130,FLOOR); x.lineTo(90+i*130,6); x.fill();
+  // 천장: 흰 판넬 + 형광등
+  px(0,0,W,46,'#e8e6e0');
+  px(0,20,W,2,'#c8c5bc');                    // 천장 보
+  for(let i=0;i<3;i++){ px(18+i*90,6,54,5,'#fbfbf5'); px(18+i*90,11,54,1,'#b8b5ac'); }
+  px(0,44,W,2,'#b8b5ac');
+  // 상단 흰 벽
+  px(0,46,W,44,'#dcd9d0');
+  // OSB 합판 벽
+  px(0,90,W,FLOOR-90,'#c9a86a');
+  px(0,90,W,2,'#a8865a');
+  for(let i=0;i<46;i++){
+    px((i*37)%W, 96+((i*53)%(FLOOR-110)), 3, 1, i%3===0?'#b8945a':'#d8bc80');
   }
+  // 케틀벨 로고 벽화 (검정 페인트)
+  px(196,138,22,4,'#33291e');                 // 손잡이
+  px(194,140,4,10,'#33291e'); px(216,140,4,10,'#33291e');
+  px(190,150,32,22,'#33291e');                // 몸통
+  px(196,172,20,3,'#33291e');
+  // 배경 리그 (흰 기둥 + 파랑 크로스바)
+  px(0,108,W,4,'#3a6ad4'); px(0,108,W,1,'#6a94e8');
+  for(let i=0;i<3;i++){
+    px(28+i*88,100,6,FLOOR-100,'#e8e6e0');
+    px(28+i*88,100,6,10,'#3a6ad4');
+    px(29+i*88,112,4,1,'#b8b5ac');
+  }
+  // 짐내스틱 링 (스트랩 + 나무 링)
+  px(70,112,2,34,'#dcd9d0');
+  x.strokeStyle='#b8945a'; x.lineWidth=2;
+  x.beginPath(); x.arc(71,152,6,0,Math.PI*2); x.stroke();
+  // 생일 배너
+  px(15,50,240,24,'#2a2340');
+  px(15,50,240,3,'#3d3355');
+  text('★ HAPPY BIRTHDAY WOD ★', 135, 67, 12, '#ffd23f');
+  // 검정 러버 타일 바닥
+  px(0,FLOOR,W,H-FLOOR,'#232326');
+  px(0,FLOOR,W,2,'#3a3a40');
+  for(let i=0;i<5;i++) px(i*60,FLOOR,1,H-FLOOR,'#2e2e33');
+  px(0,FLOOR+40,W,1,'#2e2e33');
+  // 컬러 범퍼 플레이트 스택 (오른쪽)
+  const stackCols=['#e8c22a','#4ea84a','#3a3a40','#e8c22a','#4ea84a'];
+  for(let s=0;s<2;s++){
+    for(let k=0;k<5;k++){
+      px(216+s*22, FLOOR-6-k*6, 20, 5, stackCols[(k+s)%5]);
+      px(216+s*22, FLOOR-6-k*6, 20, 1, '#ffffff33');
+    }
+  }
+  // 벤치 + 파란 물통 (왼쪽)
+  px(8,FLOOR-16,42,5,'#4a4a52');
+  px(10,FLOOR-11,4,11,'#3a3a40'); px(44,FLOOR-11,4,11,'#3a3a40');
+  px(58,FLOOR-12,10,12,'#3a6ad4');
 }
 
 // ---------- 바벨 (무게 표시 + 60kg는 플레이트 2장) ----------
@@ -239,16 +269,16 @@ function drawBarbell(bx, by, kg){
   }
   px(bx-28,by-2,56,4,'#b8bcc8');
   px(bx-28,by-2,56,1,'#e0e4ec');
-  if(kg) text(kg+'kg', bx, by-16, 9, '#ffd23f');
+  if(kg) text(kg+'kg', bx, by-16, 9, '#1e2a52');
 }
 
 // ---------- 풀업 리그 ----------
 function drawRig(rx, barY){
-  px(rx-52,barY,104,4,'#8a8fa0');
-  px(rx-52,barY,104,1,'#c8ccd8');
-  px(rx-56,barY-24,6,FLOOR-(barY-24),'#2e2a3d');
-  px(rx+50,barY-24,6,FLOOR-(barY-24),'#2e2a3d');
-  px(rx-56,barY-24,6,3,'#3d3860'); px(rx+50,barY-24,6,3,'#3d3860');
+  px(rx-52,barY,104,4,'#3a6ad4');            // 파랑 바
+  px(rx-52,barY,104,1,'#6a94e8');
+  px(rx-56,barY-24,6,FLOOR-(barY-24),'#e8e6e0');   // 흰 기둥
+  px(rx+50,barY-24,6,FLOOR-(barY-24),'#e8e6e0');
+  px(rx-56,barY-24,6,6,'#3a6ad4'); px(rx+50,barY-24,6,6,'#3a6ad4');  // 파랑 캡
 }
 
 // ---------- 애슬릿 (남자, 짧은 머리 + 은테 안경) ----------
@@ -284,12 +314,26 @@ function drawAthlete(ax, ay, pose, opt){
     px(fx,fy,w,2,'#2a2a30');
     px(fx,fy+2,w,1,'#f0f0f0');
   }
+  // 레알 24-25 어웨이: 네이비 크루넥 + 어깨 3선 + 로고/크레스트 + Emirates + 대각 패턴
+  function jersey(jx,jy,wd,ht){
+    px(jx,jy,wd,ht,top);
+    px(jx+2,jy,wd-4,1,topD);                 // 크루넥
+    for(let k=0;k<3;k++){                    // 아디다스 어깨 3선
+      px(jx+k*2,jy+1,1,2,topD);
+      px(jx+wd-1-k*2,jy+1,1,2,topD);
+    }
+    px(jx+1,jy+4,2,1,'#3a3a40');             // 아디다스 로고
+    px(jx+wd-3,jy+4,2,2,'#3a3a40');          // 크레스트
+    px(jx+2,jy+7,wd-4,1,'#3a3a40');          // Emirates
+    px(jx,jy+ht-4,2,2,'#d96a28');            // 진한 주황 대각 패턴
+    px(jx+wd-2,jy+ht-5,2,2,'#d96a28');
+    px(jx+(wd>>1)-1,jy+ht-2,3,1,'#d96a28');
+  }
 
   if(pose==='setup'){
     // 데드리프트 셋업
     head(ax+8, ay-34);
-    px(ax-2,ay-27,16,10,top);
-    px(ax-2,ay-27,16,2,topD);
+    jersey(ax-2,ay-27,16,10);
     px(ax+10,ay-24,4,14,skin);
     px(ax+16,ay-24,4,14,skin);
     px(ax-2,ay-18,8,10,shorts);       // 굽힌 허벅지
@@ -301,8 +345,7 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='pull'){
     // 퍼스트 풀: 바 무릎~허벅지, 팔 아래로
     head(ax+3, ay-46);
-    px(ax,ay-37,14,12,top);
-    px(ax,ay-37,14,2,topD);
+    jersey(ax,ay-37,14,12);
     px(ax+9,ay-35,4,13,skin);
     px(ax+14,ay-35,4,13,skin);
     leg(ax,ay-25,6,22);
@@ -312,8 +355,7 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='extend'){
     // 익스텐션: 발끝 세우고 어깨 으쓱, 팔꿈치 높이
     head(ax, ay-56);
-    px(ax-1,ay-47,12,13,top);
-    px(ax-1,ay-47,12,2,topD);
+    jersey(ax-1,ay-47,12,13);
     px(ax-5,ay-46,5,5,skin);       // 팔꿈치 올림
     px(ax-5,ay-42,4,8,skin);
     px(ax+9,ay-46,5,5,skin);
@@ -325,8 +367,7 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='overhead'){
     // 오버헤드 스쿼트 캐치 (깊게)
     head(ax, ay-42);
-    px(ax-1,ay-33,12,10,top);
-    px(ax-1,ay-33,12,2,topD);
+    jersey(ax-1,ay-33,12,10);
     px(ax-4,ay-48,4,16,skin);
     px(ax+9,ay-48,4,16,skin);
     px(ax-3,ay-23,8,8,shorts);        // 허벅지
@@ -340,8 +381,7 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='ohstand'){
     // 오버헤드 스탠드업 (락아웃 완성)
     head(ax, ay-52);
-    px(ax-1,ay-43,12,14,top);
-    px(ax-1,ay-43,12,2,topD);
+    jersey(ax-1,ay-43,12,14);
     px(ax-4,ay-58,4,16,skin);
     px(ax+9,ay-58,4,16,skin);
     leg(ax,ay-29,5,26);
@@ -353,8 +393,7 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-3,ay+2,3,14,skin);
     px(ax+9,ay+2,3,14,skin);
     head(ax-1, ay+14);
-    px(ax-1,ay+23,11,13,top);
-    px(ax-1,ay+23,11,2,topD);
+    jersey(ax-1,ay+23,11,13);
     leg(ax,ay+36+wobble,4,12);
     leg(ax+5,ay+36-wobble,4,12);
     foot(ax-1,ay+48,6); foot(ax+5,ay+48,6);
@@ -364,8 +403,7 @@ function drawAthlete(ax, ay, pose, opt){
     px(ax-3,ay+2,3,13,skin);
     px(ax+9,ay+2,3,13,skin);
     head(ax-3, ay+13);
-    px(ax-2,ay+22,12,12,top);
-    px(ax-2,ay+22,12,2,topD);
+    jersey(ax-2,ay+22,12,12);
     px(ax+3,ay+34,5,10,shorts);       // 허벅지 뒤로
     px(ax+7,ay+42,3,5,skin);          // 정강이
     px(ax+9,ay+45,4,4,sock);
@@ -377,7 +415,7 @@ function drawAthlete(ax, ay, pose, opt){
     head(ax-1, ay-8);
     px(ax-5,ay,5,6,skin);
     px(ax+10,ay,5,6,skin);
-    px(ax-1,ay+1,11,12,top);
+    jersey(ax-1,ay+1,11,12);
     leg(ax,ay+13,4,10);
     leg(ax+5,ay+13,4,10);
     foot(ax-1,ay+23,6); foot(ax+5,ay+23,6);
@@ -385,8 +423,7 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='dip'){
     // 트랜지션: 상체 바 위로, 팔꿈치 굽힘
     head(ax-1, ay-18);
-    px(ax-1,ay-9,11,11,top);
-    px(ax-1,ay-9,11,2,topD);
+    jersey(ax-1,ay-9,11,11);
     px(ax-5,ay-8,4,9,skin);
     px(ax+10,ay-8,4,9,skin);
     leg(ax,ay+2,4,10);
@@ -396,8 +433,7 @@ function drawAthlete(ax, ay, pose, opt){
   else if(pose==='support'){
     // 바 위 서포트 락아웃
     head(ax-1, ay-32);
-    px(ax-1,ay-23,11,13,top);
-    px(ax-1,ay-23,11,2,topD);
+    jersey(ax-1,ay-23,11,13);
     px(ax-5,ay-22,4,12,skin);
     px(ax+10,ay-22,4,12,skin);
     leg(ax,ay-10,4,10);
@@ -408,8 +444,7 @@ function drawAthlete(ax, ay, pose, opt){
     // 더블언더 (opt.jump: 0~1 점프 높이, opt.spin: 로프 회전)
     const jy = ay - (opt&&opt.jump ? opt.jump*10 : 0);
     head(ax, jy-48);
-    px(ax-1,jy-39,12,13,top);
-    px(ax-1,jy-39,12,2,topD);
+    jersey(ax-1,jy-39,12,13);
     px(ax-4,jy-36,4,9,skin);
     px(ax+9,jy-36,4,9,skin);
     leg(ax,jy-26,5,14);
@@ -429,7 +464,7 @@ function drawAthlete(ax, ay, pose, opt){
   }
   else if(pose==='stumble'){
     head(ax+4+wobble, ay-46);
-    px(ax+2+wobble,ay-37,12,13,top);
+    jersey(ax+2+wobble,ay-37,12,13);
     px(ax-2,ay-36,4,10,skin);
     px(ax+13,ay-38,4,10,skin);
     leg(ax+2,ay-24,5,21);
@@ -572,7 +607,7 @@ function loop(){
     drawScene();
 
     if(phase==='ready'){
-      if((frame>>3)&1) text('READY...', W/2, 120, 11, '#7a7292');
+      if((frame>>3)&1) text('READY...', W/2, 120, 11, '#2a2340');
       if(frame>=readyDur()){ phase='run'; frame=0; }
     }
     else if(phase==='run'){
@@ -585,6 +620,7 @@ function loop(){
     }
 
     if(combo>=2){
+      text(combo+' COMBO', W/2+1, 63, 13, '#00000066');
       text(combo+' COMBO', W/2, 62, 13, combo>=5?'#ffd23f':'#8be0d8');
     }
   }
@@ -633,7 +669,9 @@ function loop(){
     const p=popups[i];
     p.y-=0.6; p.life--;
     if(p.life<=0){ popups.splice(i,1); continue; }
-    text(p.text, W/2, p.y, p.text.length>4?18:14, p.col);
+    const fs = p.text.length>4?18:14;
+    text(p.text, W/2+1, p.y+1, fs, '#00000077');
+    text(p.text, W/2, p.y, fs, p.col);
   }
 
   x.restore();
