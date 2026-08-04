@@ -1092,6 +1092,14 @@ function loop(){
     const bs = bestScore();
     if(bs>0) text('최고 기록 '+bs, W/2, 206, 10, '#ffd23f');
     text('선수: '+playerName+'  (탭해서 변경)', W/2, 220, 9, '#8be0d8');
+    // 선수 말풍선
+    const bob2 = Math.sin(t*0.06)*2;
+    px(158,262+bob2,100,24,'#f6f6f2');
+    px(158,262+bob2,100,2,'#2a2340'); px(158,284+bob2,100,2,'#2a2340');
+    px(158,262+bob2,2,24,'#2a2340');  px(256,262+bob2,2,24,'#2a2340');
+    px(166,286+bob2,8,3,'#f6f6f2');
+    px(162,289+bob2,6,3,'#f6f6f2');
+    text('할 수 이떠~~!', 208, 278+bob2, 10, '#1e2a52');
   }
 
   else if(state==='build'){
