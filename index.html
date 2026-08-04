@@ -58,7 +58,7 @@ const MOVES = [
   { move:'du',     label:'더블언더',          weight:0,   reps:3,  dur:34, pw:0.050, gw:0.110, random:false },
   { move:'rmu',    label:'링 머슬업',          weight:0,   reps:3,  dur:74, pw:0.036, gw:0.095, random:true  },
   { move:'cj',     label:'클린&저크',         weight:135, wStep:20, wMax:175, reps:3,  dur:70, pw:0.038, gw:0.095, random:true  },
-  { move:'alt',    label:'스내치 155lb + 머슬업', weight:155, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
+  { move:'alt',    label:'콤보 (스내치+머슬업)', weight:155, reps:3,  dur:62, pw:0.032, gw:0.085, random:true  },
 ];
 let WOD = MOVES.slice();   // 빌더에서 고른 라운드 구성 (기본: 풀코스)
 let buildSel = [];         // 빌더 선택 순서 (MOVES 인덱스)
@@ -150,6 +150,9 @@ function canvasPos(e){
   return { mx:(e.clientX-r.left)*W/r.width, my:(e.clientY-r.top)*H/r.height };
 }
 function customReps(i){ return repsOverride[i] || MOVES[i].reps; }
+function moveWeight(m){   // 표기용: 현재 wMode 적용된 시작 무게
+  return m.weight ? m.weight - (wMode==='scaled' ? (m.move==='wb'?6:20) : 0) : 0;
+}
 function launchWOD(){
   const pickList = buildSel.length ? buildSel : MOVES.map((_,i)=>i);
   WOD = pickList.map(i=>({ ...MOVES[i], reps: customReps(i) }));
@@ -1138,7 +1141,7 @@ function loop(){
         px(222,ry+4,18,20,'#ffd23f');
         text((sel+1)+'', 231, ry+19, 11, '#1a1526');
       } else {
-        const info = m.weight ? m.weight+'lb'+(m.wStep?'+':'') : (m.move==='du'?'리듬':'맨몸');
+        const info = m.weight ? moveWeight(m)+'lb'+(m.wStep?'+':'') : (m.move==='du'?'리듬':'맨몸');
         text(info+' × '+customReps(i), 240, ry+19, 8, '#7a7292', 'right');
       }
     });
@@ -1173,7 +1176,7 @@ function loop(){
     const r = WOD[roundIdx];
     x.fillStyle='rgba(0,0,0,0.55)'; x.fillRect(0,140,W,110);
     text('ROUND '+(roundIdx+1), W/2, 168, 13, '#8be0d8');
-    text(r.label+(r.weight&&r.move!=='alt'?' '+r.weight+'lb'+(r.wStep?'+':''):''), W/2, 194, 15, '#ffd23f');
+    text(r.label+(r.weight?' '+moveWeight(r)+'lb'+(r.wStep?'+':''):''), W/2, 194, 15, '#ffd23f');
     text('× '+r.reps, W/2, 214, 12, '#ffd23f');
     if(r.random) text('!! 판정 존이 랩마다 움직임 !!', W/2, 232, 9, '#ff9ec4');
     const cnt = 3 - (frame/30|0);
