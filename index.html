@@ -1431,9 +1431,9 @@ function loop(){
   if(state==='title'){
     drawGym();
     x.save();
-    x.translate(AX, FLOOR); x.scale(SCALE, SCALE); x.translate(-AX, -FLOOR);
-    drawAthlete(AX, FLOOR, 'ohstand');
-    drawBarbell(AX+6, FLOOR-59, 95);
+    x.translate(AX, FLOOR+44); x.scale(SCALE, SCALE); x.translate(-AX, -(FLOOR+44));   // 선수를 아래 매트로
+    drawAthlete(AX, FLOOR+44, 'ohstand');
+    drawBarbell(AX+6, FLOOR+44-59, 95);
     x.restore();
     x.fillStyle='rgba(0,0,0,0.62)'; x.fillRect(0,60,W,172);   // 텍스트만 커버, 선수는 안 가리게
     text('BIRTHDAY', W/2, 92, 22, '#ffd23f');
