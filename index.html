@@ -400,6 +400,8 @@ function drawAthlete(ax, ay, pose, opt){
     // 풀업바 매달림 (ay = 바 y)
     px(ax-3,ay+2,3,14,skin);
     px(ax+9,ay+2,3,14,skin);
+    px(ax-3,ay-1,3,3,'#9aa06a');  px(ax+9,ay-1,3,3,'#9aa06a');   // 스티키 그립
+    px(ax-3,ay+5,3,2,'#1a1a1a');  px(ax+9,ay+5,3,2,'#1a1a1a');   // 손목 아대
     head(ax-1, ay+14);
     jersey(ax-1,ay+23,11,13);
     leg(ax,ay+36+wobble,4,12);
@@ -410,6 +412,8 @@ function drawAthlete(ax, ay, pose, opt){
     // 킵 스윙: 몸 활처럼, 다리 뒤로
     px(ax-3,ay+2,3,13,skin);
     px(ax+9,ay+2,3,13,skin);
+    px(ax-3,ay-1,3,3,'#9aa06a');  px(ax+9,ay-1,3,3,'#9aa06a');   // 스티키 그립
+    px(ax-3,ay+5,3,2,'#1a1a1a');  px(ax+9,ay+5,3,2,'#1a1a1a');   // 손목 아대
     head(ax-3, ay+13);
     jersey(ax-2,ay+22,12,12);
     px(ax+3,ay+34,5,10,shorts);       // 허벅지 뒤로
@@ -423,6 +427,8 @@ function drawAthlete(ax, ay, pose, opt){
     head(ax-1, ay-8);
     px(ax-5,ay,5,6,skin);
     px(ax+10,ay,5,6,skin);
+    px(ax-5,ay-1,5,3,'#9aa06a');  px(ax+10,ay-1,5,3,'#9aa06a');  // 스티키 그립
+    px(ax-5,ay+4,5,2,'#1a1a1a');  px(ax+10,ay+4,5,2,'#1a1a1a');  // 손목 아대
     jersey(ax-1,ay+1,11,12);
     leg(ax,ay+13,4,10);
     leg(ax+5,ay+13,4,10);
@@ -434,6 +440,8 @@ function drawAthlete(ax, ay, pose, opt){
     jersey(ax-1,ay-9,11,11);
     px(ax-5,ay-8,4,9,skin);
     px(ax+10,ay-8,4,9,skin);
+    px(ax-5,ay-1,4,3,'#9aa06a');  px(ax+10,ay-1,4,3,'#9aa06a');  // 스티키 그립
+    px(ax-5,ay-4,4,2,'#1a1a1a');  px(ax+10,ay-4,4,2,'#1a1a1a');  // 손목 아대
     leg(ax,ay+2,4,10);
     leg(ax+5,ay+2,4,10);
     foot(ax-1,ay+12,6); foot(ax+5,ay+12,6);
@@ -444,6 +452,8 @@ function drawAthlete(ax, ay, pose, opt){
     jersey(ax-1,ay-23,11,13);
     px(ax-5,ay-22,4,12,skin);
     px(ax+10,ay-22,4,12,skin);
+    px(ax-5,ay-11,4,3,'#9aa06a'); px(ax+10,ay-11,4,3,'#9aa06a'); // 스티키 그립
+    px(ax-5,ay-14,4,2,'#1a1a1a'); px(ax+10,ay-14,4,2,'#1a1a1a'); // 손목 아대
     leg(ax,ay-10,4,10);
     leg(ax+5,ay-10,4,10);
     foot(ax-1,ay,6); foot(ax+5,ay,6);
@@ -489,6 +499,15 @@ const SCALE = 1.7;    // 동작 잘 보이게 확대
 
 function drawScene(){
   drawGym();
+
+  // 벽에 걸린 무게 화이트보드 (스내치 랩)
+  if(curMove==='snatch' && curWeight()){
+    px(18,124,68,36,'#8a8fa0');
+    px(20,126,64,32,'#f6f6f2');
+    text('TODAY', 52, 137, 8, '#8a8fa0');
+    text(curWeight()+'lb', 52, 153, 14, '#1e2a52');
+  }
+
   x.save();
   x.translate(AX, FLOOR); x.scale(SCALE, SCALE); x.translate(-AX, -FLOOR);
 
@@ -558,12 +577,6 @@ function drawScene(){
   }
 
   x.restore();
-
-  // 무게 태그 (바벨 겹침 방지, 좌상단 별도 표기)
-  if(curMove==='snatch' && kg){
-    px(14,84,46,16,'#1a1a1a');
-    text(kg+'lb', 37, 96, 10, '#ffd23f');
-  }
 }
 
 // ---------- 타이밍 게이지 (하단 가로 바) ----------
