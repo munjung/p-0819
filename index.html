@@ -347,10 +347,12 @@ function drawAthlete(ax, ay, pose, opt){
     // 스내치 스타트: 딥 스쿼트 (엉덩이 낮게, 가슴 세우고, 팔은 바까지 쭉)
     head(ax+2, ay-40);
     jersey(ax-1, ay-31, 12, 11);
-    px(ax-4,ay-28,4,9,skin);          // 왼팔: 바깥쪽으로 넓게
-    px(ax-9,ay-19,4,11,skin);
-    px(ax+10,ay-28,4,9,skin);         // 오른팔: 바깥쪽으로 넓게
-    px(ax+15,ay-19,4,11,skin);
+    px(ax-4,ay-28,4,7,skin);          // 왼팔: 어깨→바깥 대각선 (겹치게 연결)
+    px(ax-7,ay-22,4,7,skin);
+    px(ax-10,ay-16,4,8,skin);
+    px(ax+10,ay-28,4,7,skin);         // 오른팔: 어깨→바깥 대각선
+    px(ax+13,ay-22,4,7,skin);
+    px(ax+16,ay-16,4,8,skin);
     px(ax-3,ay-22,12,9,shorts);       // 엉덩이~허벅지 (상체에 딱 붙게)
     px(ax+6,ay-13,4,4,skin);          // 앞다리 정강이
     px(ax+6,ay-9,4,4,sock);
