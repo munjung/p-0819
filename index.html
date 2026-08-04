@@ -240,6 +240,15 @@ function drawGym(){
   px(70,112,2,34,'#dcd9d0');
   x.strokeStyle='#b8945a'; x.lineWidth=2;
   x.beginPath(); x.arc(71,152,6,0,Math.PI*2); x.stroke();
+  // 월볼샷 타겟 (오른쪽 기둥) + 메디신볼
+  x.fillStyle='#2a2622';
+  x.beginPath(); x.arc(231,148,8,0,Math.PI*2); x.fill();
+  x.fillStyle='#e8453a';
+  x.beginPath(); x.arc(231,148,3,0,Math.PI*2); x.fill();
+  px(228,156,6,3,'#2a2622');                   // 타겟 브라켓
+  x.fillStyle='#8a3a3a';                       // 메디신볼 (기둥 아래)
+  x.beginPath(); x.arc(140,FLOOR-6,6,0,Math.PI*2); x.fill();
+  px(135,FLOOR-8,10,1,'#6a2a2a');
   // 생일 배너
   px(15,50,240,24,'#2a2340');
   px(15,50,240,3,'#3d3355');
