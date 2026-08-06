@@ -347,10 +347,10 @@ function action(e){
         try{ localStorage.setItem('wodChar', charSel); }catch(_){}
         sfx.count(); return;
       }
-      // 📸 사진 공유
-      if(mx>=132&&mx<=188&&my>=14&&my<=38){ doPhoto(); sfx.count(); return; }
+      // 📸 사진 공유 (미리보기 우측 하단)
+      if(mx>=194&&mx<=254&&my>=178&&my<=202){ doPhoto(); sfx.count(); return; }
       // 👫 같이찍기 (남+여+치즈 랜덤 씬)
-      if(mx>=68&&mx<=124&&my>=14&&my<=38){ doDuo(); sfx.count(); return; }
+      if(mx>=194&&mx<=254&&my>=206&&my<=230){ doDuo(); sfx.count(); return; }
       const i = Math.floor((my-252)/52);
       if(i>=0 && i<4 && (my-252)%52 <= 34){
         const k = ['top','bottom','socks','shoes'][i];
@@ -1987,10 +1987,11 @@ function loop(){
     // 성별 전환 + 사진 버튼 (우상단)
     px(196,14,58,24,'#2a2340'); px(196,14,58,2,'#4a4468');
     text(charSel==='F'?'♂ 전환':'♀ 전환', 225, 31, 9, '#8be0d8');
-    px(132,14,56,24,'#6e2438'); px(132,14,56,2,'#ff9ec4');
-    text('📸 사진', 160, 31, 9, '#ff9ec4');
-    px(68,14,56,24,'#2e5c46'); px(68,14,56,2,'#8be0d8');
-    text('👫 같이', 96, 31, 9, '#8be0d8');
+    // 사진 버튼들 (미리보기 우측 하단)
+    px(194,178,60,24,'#6e2438'); px(194,178,60,2,'#ff9ec4');
+    text('📸 사진', 224, 195, 9, '#ff9ec4');
+    px(194,206,60,24,'#2e5c46'); px(194,206,60,2,'#8be0d8');
+    text('👫 같이', 224, 223, 9, '#8be0d8');
     // 미리보기 (크게)
     px(0,236,W,2,'#2a2540');
     x.save();
