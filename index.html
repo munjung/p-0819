@@ -1831,7 +1831,7 @@ function loop(){
       } else if(isHoldMove()){
         // 홀드&릴리즈: 누르는 동안만 게이지 진행, 놓는 지점 판정
         if(pendingHold && !holding){ holding=true; pendingHold=false; }
-        if(holding) gaugeF += 0.45 + 2.4*(gaugeF/repDur);    // 당길수록 가속 (존 근처 ~2.5배)
+        if(holding) gaugeF += 0.5 + 1.7*(gaugeF/repDur);     // 당길수록 가속 (존 근처 ~2배)
         const p = gaugeF/repDur;
         drawMeter(p);
         if(holding && p>=1.15){ holding=false; judge(1.2); }         // 너무 오래 당김
