@@ -37,7 +37,7 @@
     </div>
   </div>
   <canvas id="c" width="540" height="960"></canvas>
-  <div id="hint">게이지가 골드 존에 왔을 때 탭! · 미리 누르면 NO REP!</div>
+  <div id="hint">종목마다 조작이 달라요 — 홀드·스와이프·연타! 화면 안내를 확인하세요</div>
 </div>
 
 <script>
@@ -111,6 +111,14 @@ let repEvent = null;      // RX'D 랜덤 이벤트: 'judge'(퍼펙트만 인정)
 // 달리기 (좌우 연타) 상태
 let runDist = 0, runSpeed = 0, runSeg = 0, segFrames = 0, lastSide = null;
 let btnFlash = {L:0, R:0};
+// 종목별 조작 상태
+let holding = false;       // 홀드 중 (스내치/클린/월볼)
+let pendingHold = false;   // ready 중 미리 누름 → run 시작하면 이어짐
+let gaugeF = 0;            // 홀드형 게이지 진행 프레임
+let wbDepth = 0;           // 월볼 스쿼트 깊이 (0~1)
+let duTap1 = null;         // 더블언더 첫 탭 위치
+let duTapFrame = 0;
+let pressY = 0;            // 스와이프 판정용 시작 y
 let coachMsg = null;      // {text, side, life}
 let isNewBest = false;
 
@@ -286,6 +294,26 @@ function action(e){
     else if(phase==='ready') judge(0);   // 부정출발도 NO REP
   }
 }
+function isHoldMove(){   // 홀드&릴리즈 조작 종목
+  return curMove==='snatch' || (curMove==='cj' && cjStage===0);
+}
+function forceMiss(msg){   // 조작 실패 (깊이 부족, 스와이프 없음 등)
+  combo=0; misses++; roundMisses++;
+  judgment = {text:msg, col:'#ff5a5a', pts:0};
+  sfx.norep(); shake=7;
+  popups.push({text:msg, col:'#ff5a5a', y:150, life:40});
+  phase='result'; frame=0;
+  holding=false; duTap1=null;
+  if(roundMisses>=3 && mode!=='amrap'){ state='failed'; frame=0; coachMsg=null; }
+  updateHUD();
+}
+function duTapLogic(){   // 더블언더: 존 안에서 빠른 2연타
+  const p = frame/repDur;
+  if(p>=zone.gLo && p<=zone.gHi){
+    if(duTap1===null){ duTap1=p; duTapFrame=frame; beep(880,0.04,'square',0.08); }
+    else judge(duTap1);
+  } else judge(p);
+}
 function runTap(side){
   if(side === lastSide) return;          // 같은 쪽 연타는 무효 (번갈아!)
   lastSide = side;
@@ -353,8 +381,85 @@ function doShare(){
     }catch(_){}
   });
 }
+// ---------- 종목별 터치 입력 (누름 / 뗌) ----------
+function pressAt(e){
+  audioInit();
+  const pos = canvasPos(e);
+  pressY = pos.my;
+  if(state!=='play'){ action(e); return; }
+  if(pos.mx<=44 && pos.my<=36){ action(e); return; }   // 뒤로가기
+  if(curMove==='run'){
+    if(phase==='run') runTap(pos.mx < W/2 ? 'L' : 'R');
+    return;
+  }
+  if(isHoldMove() || curMove==='wb'){                  // 홀드 시작
+    if(phase==='ready') pendingHold=true;
+    else if(phase==='run') holding=true;
+    return;
+  }
+  if(curMove==='du'){                                  // 2연타
+    if(phase==='ready'){ judge(0); return; }
+    if(phase==='run') duTapLogic();
+    return;
+  }
+  if(curMove==='cj' && cjStage===1) return;            // 저크: 스와이프는 뗄 때 판정
+  if(phase==='run') judge(frame/repDur);               // 머슬업: 탭
+  else if(phase==='ready') judge(0);
+}
+function releaseAt(e){
+  if(state!=='play') return;
+  const pos = canvasPos(e);
+  const swipeUp = (pressY - pos.my) > 20;
+  pendingHold=false;
+  if(isHoldMove() && phase==='run' && holding){        // 릴리즈 판정
+    holding=false;
+    judge(gaugeF/repDur);
+    return;
+  }
+  if(curMove==='wb' && phase==='run' && holding){
+    holding=false;
+    if(wbDepth < 0.6){ forceMiss('더 깊게 앉아야죠~!'); return; }
+    if(!swipeUp){ forceMiss('위로 던져야지!'); return; }
+    judge(gaugeF/repDur);
+    return;
+  }
+  if(curMove==='cj' && cjStage===1 && phase==='run' && swipeUp){
+    judge(frame/repDur);
+  }
+}
+// 키보드: Space = 누름/뗌 (스와이프는 뗌으로 대체)
+function kbPress(){
+  audioInit();
+  if(curMove==='run') return;
+  if(isHoldMove() || curMove==='wb'){
+    if(phase==='ready') pendingHold=true;
+    else if(phase==='run') holding=true;
+    return;
+  }
+  if(curMove==='du'){
+    if(phase==='ready'){ judge(0); return; }
+    if(phase==='run') duTapLogic();
+    return;
+  }
+  if(curMove==='cj' && cjStage===1){ if(phase==='run') judge(frame/repDur); return; }
+  if(phase==='run') judge(frame/repDur);
+  else if(phase==='ready') judge(0);
+}
+function kbRelease(){
+  if(state!=='play') return;
+  pendingHold=false;
+  if(isHoldMove() && phase==='run' && holding){ holding=false; judge(gaugeF/repDur); }
+  else if(curMove==='wb' && phase==='run' && holding){
+    holding=false;
+    if(wbDepth<0.6){ forceMiss('더 깊게 앉아야죠~!'); return; }
+    judge(gaugeF/repDur);   // 키보드는 스와이프 면제
+  }
+}
 addEventListener('keydown', e=>{
-  if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); if(!e.repeat) action(); }
+  if(e.code==='Space'||e.code==='ArrowUp'){
+    e.preventDefault();
+    if(!e.repeat){ if(state==='play') kbPress(); else action(); }
+  }
   if(e.code==='ArrowLeft'||e.code==='KeyA'){
     if(state==='play'&&curMove==='run'&&phase==='run'&&!e.repeat){ audioInit(); runTap('L'); }
   }
@@ -363,7 +468,12 @@ addEventListener('keydown', e=>{
   }
   if(e.code==='KeyM'){ audioInit(); toggleMute(); }
 });
-c.addEventListener('pointerdown', e=>{ e.preventDefault(); action(e); });
+addEventListener('keyup', e=>{
+  if(e.code==='Space'||e.code==='ArrowUp') kbRelease();
+});
+c.addEventListener('pointerdown', e=>{ e.preventDefault(); pressAt(e); });
+c.addEventListener('pointerup', e=>{ e.preventDefault(); releaseAt(e); });
+c.addEventListener('pointercancel', ()=>{ holding=false; pendingHold=false; });
 ['contextmenu','selectstart','dragstart'].forEach(ev=>document.addEventListener(ev, e=>e.preventDefault()));
 document.addEventListener('gesturestart', e=>e.preventDefault());
 
@@ -421,6 +531,7 @@ function startRep(){
     repEvent = r2<0.25 ? 'judge' : (r2<0.40 ? 'blind' : null);   // 탱코 25% / 블라인드 15%
   }
   if(curMove==='run'){ runDist=0; runSpeed=0; runSeg=0; segFrames=0; lastSide=null; }
+  holding=false; pendingHold=false; gaugeF=0; wbDepth=0; duTap1=null;
   if(Math.random()<0.6){                // 코치 한마디 (랜덤 좌/우 말풍선)
     const pool = curMove==='wb' ? COACH_WB : COACH;
     coachMsg = {
@@ -1129,8 +1240,8 @@ function drawWbScene(){
   x.fillStyle='#e8453a'; x.beginPath(); x.arc(135,150,10,0,Math.PI*2); x.fill();
   px(128,140,5,4,'#ffffff55');
 
-  // 공 위치
-  let bx=135, by=300+Math.sin(t*0.12)*3, br=20, impact=false, gone=false;
+  // 공 위치 (스쿼트 깊이만큼 내려감)
+  let bx=135, by=300+Math.sin(t*0.12)*3 + (phase==='run'? wbDepth*26 : 0), br=20, impact=false, gone=false;
   if(phase==='result' && judgment){
     if(judgment.pts>0){
       const p2 = Math.min(1, frame/9);
@@ -1170,6 +1281,15 @@ function drawWbScene(){
   px(184,hy+32,20,18,'#f2cba6');  px(170,hy+17,20,18,'#f2cba6');  px(156,hy+2,20,18,'#f2cba6');  // 오른 전완 대각
   px(135-br-8, hy-8, 16, 22, '#f2cba6');                     // 손 (공 감쌈)
   px(135+br-8, hy-8, 16, 22, '#f2cba6');
+
+  // 스쿼트 깊이 게이지 (왼쪽)
+  if(phase==='run'){
+    px(14,238,14,88,'#2a2340');
+    px(16,240+84*0.4,10,2,'#ffd23f');            // 통과 기준선 (깊이 60%)
+    const dh = wbDepth*84;
+    px(16,240+(84-dh),10,dh, wbDepth>=0.6?'#4ea84a':'#8be0d8');
+    text('앉기', 21, 234, 8, '#4a3a28');
+  }
 }
 
 // 달리기: 안양천 배경 (좌→우 스크롤)
@@ -1304,8 +1424,15 @@ function drawScene(){
 
   if(curMove==='snatch'){
     if(phase==='ready' || phase==='run'){
-      drawAthlete(AX, FLOOR, 'setup');
-      drawBarbell(AX+6, FLOOR-8, kg);
+      if(phase==='run' && (holding || gaugeF>0)){
+        // 당기는 중: 풀 자세 + 바가 게이지 따라 상승
+        const hp = Math.min(1, gaugeF/repDur);
+        drawAthlete(AX, FLOOR, holding?'pull':'setup');
+        drawBarbell(AX+6, FLOOR-8-hp*15, kg);
+      } else {
+        drawAthlete(AX, FLOOR, 'setup');
+        drawBarbell(AX+6, FLOOR-8, kg);
+      }
     } else {
       if(judgment && judgment.pts>0){
         // 풀 → 익스텐션 → 캐치 → 스탠드업, 바는 항상 손 높이에 고정
@@ -1354,8 +1481,14 @@ function drawScene(){
   }
   else if(curMove==='cj'){
     if(phase==='ready' || (phase==='run' && cjStage===0)){
-      drawAthlete(AX, FLOOR, 'setup');
-      drawBarbell(AX+6, FLOOR-8, kg);
+      if(phase==='run' && (holding || gaugeF>0)){
+        const hp = Math.min(1, gaugeF/repDur);
+        drawAthlete(AX, FLOOR, holding?'pull':'setup');
+        drawBarbell(AX+6, FLOOR-8-hp*15, kg);
+      } else {
+        drawAthlete(AX, FLOOR, 'setup');
+        drawBarbell(AX+6, FLOOR-8, kg);
+      }
     } else if(phase==='mid' || (phase==='run' && cjStage===1)){
       drawAthlete(AX, FLOOR, 'rack');
       drawBarbell(AX+4, FLOOR-46, kg);
@@ -1626,7 +1759,14 @@ function loop(){
     }
 
     if(phase==='ready'){
-      if((frame>>3)&1 && repEvent!=='judge') text('READY...', W/2, 120, 11, '#2a2340');   // 저지 땐 탱코등장이 자리 차지
+      if((frame>>3)&1 && repEvent!=='judge'){    // 저지 땐 탱코등장이 자리 차지
+        const hint = isHoldMove() ? '꾹 눌러 당기고, 골드 존에서 놓기!'
+          : curMove==='wb' ? '꾹 눌러 앉고, 위로 스와이프!'
+          : curMove==='du' ? '골드 존에서 빠르게 2연타!'
+          : curMove==='run' ? '좌우 번갈아 연타!'
+          : 'READY... 골드 존에서 탭!';
+        text(hint, W/2, 120, 10, '#2a2340');
+      }
       if(frame>=readyDur()){ phase='run'; frame=0; }
     }
     else if(phase==='run'){
@@ -1643,14 +1783,34 @@ function loop(){
             else { repIdx = runSeg; updateHUD(); }
           }
         }
+      } else if(isHoldMove()){
+        // 홀드&릴리즈: 누르는 동안만 게이지 진행, 놓는 지점 판정
+        if(pendingHold && !holding){ holding=true; pendingHold=false; }
+        if(holding) gaugeF++;
+        const p = gaugeF/repDur;
+        drawMeter(p);
+        if(holding && p>=1.15){ holding=false; judge(1.2); }         // 너무 오래 당김
+        else if(!holding && gaugeF===0 && frame>repDur*3+60) forceMiss('바를 당겨야지!');
+      } else if(curMove==='wb'){
+        // 월볼: 홀드로 스쿼트 깊이 → 깊이 충분하면 게이지 → 위로 스와이프
+        if(pendingHold && !holding){ holding=true; pendingHold=false; }
+        if(holding) wbDepth = Math.min(1, wbDepth+0.035);
+        if(holding && wbDepth>=0.6) gaugeF++;
+        const p = gaugeF/repDur;
+        drawMeter(p);
+        if(p>=1.15){ holding=false; forceMiss('타이밍 놓침!'); }
+        else if(frame>repDur*3+90) forceMiss('공 던져야지!');
       } else {
         const p = frame/repDur;
         drawMeter(p);
-        if(p>=1) judge(1.1);
+        if(curMove==='cj' && cjStage===1 && (t>>3)&1) text('위로 스와이프!', W/2, 120, 10, '#2a2340');
+        if(curMove==='du' && duTap1!==null && frame-duTapFrame>14){ duTap1=null; forceMiss('한 번 더 쳐야지!'); }
+        else if(p>=1) judge(1.1);
       }
     }
     else if(phase==='mid'){
       // 클린 캐치 → 저크 게이지 준비
+      if((frame>>3)&1) text('저크: 골드 존에서 위로 스와이프!', W/2, 120, 10, '#2a2340');
       if(frame>=16){ setZone(); repDur=Math.max(26, repDur*0.85); phase='run'; frame=0; }
     }
     else if(phase==='result'){
