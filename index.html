@@ -497,7 +497,7 @@ function curWeight(){    // 랩마다 점진적 증량 (wStep, wMax 상한) + SC
 }
 function gradeInfo(){
   const total = perfects+goods+misses;
-  const rate = total ? perfects/total : 0;
+  const rate = total ? (perfects + goods*0.5)/total : 0;   // 굿은 0.5점 인정
   return {
     rate,
     passed: rate>=0.55,
