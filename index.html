@@ -96,6 +96,7 @@ const WARDROBE = {
       {name:'ENUF 카키 나그랑',  style:'tee', base:'#5a5c38', letter:'#1a1a1a', print:'enuf', raglan:'#1a1a1a'},
       {name:'JESUS 하늘색',      style:'tee', base:'#a8d4ec', letter:'#e8c22a', print:'jesus'},
       {name:'ENUF 핑크',         style:'tee', base:'#f2a8bc', letter:'#d93a3a', print:'enuf'},
+      {name:'치즈 화이트',        style:'tee', base:'#f4f4f0', print:'cheese'},
     ],
     bottom: [
       {name:'파랑 반바지',   c:'#2a6ad4', d:'#1e4fa8'},
@@ -114,6 +115,7 @@ const WARDROBE = {
       {name:'X-PODIUM 블루 크롭', style:'crop', base:'#4a90d9', letter:'#f0f0f0', print:'xpod'},
       {name:'ENUF 카키 크롭',     style:'crop', base:'#7a7c4a', letter:'#e8c22a', print:'enuf'},
       {name:'ENUF 핑크 크롭',     style:'crop', base:'#f2a8bc', letter:'#2e8c4a', print:'enuf'},
+      {name:'치즈 화이트 크롭',   style:'crop', base:'#f4f4f0', print:'cheese'},
     ],
     bottom: [
       {name:'3부 레깅스 블랙', type:'leg', c:'#1e1e22', d:'#0e0e12'},
@@ -1042,6 +1044,19 @@ function drawAthlete(ax, ay, pose, opt){
       });
     });
   }
+  function printCheese(gx,gy){   // 치즈 얼굴 프린트
+    L(gx-1,gy+1,14,1,'#cfc4b2');               // 외곽선 (흰 티 위 구분)
+    L(gx-1,gy+11,14,1,'#cfc4b2');
+    L(gx-1,gy+1,1,10,'#cfc4b2');  L(gx+12,gy+1,1,10,'#cfc4b2');
+    L(gx,gy+2,12,9,'#fbf6ee');                 // 얼굴
+    L(gx,gy-1,3,3,'#d98b45');                  // 귀
+    L(gx+9,gy-1,3,3,'#d98b45');
+    L(gx+7,gy+2,5,4,'#d98b45');                // 오른쪽 주황 무늬
+    L(gx+2,gy+5,2,2,'#b8cf7a');  L(gx+8,gy+5,2,2,'#b8cf7a');   // 연초록 눈
+    L(gx+2,gy+5,1,1,'#2a2a2a');  L(gx+8,gy+5,1,1,'#2a2a2a');
+    L(gx+5,gy+8,2,1,'#f0a8ae');                // 코
+    L(gx-3,gy+6,2,1,'#c8b8a8');  L(gx+13,gy+6,2,1,'#c8b8a8');  // 수염
+  }
   function printJesus(gx,gy){    // 예수님 얼굴 (크게)
     L(gx+1,gy,12,3,'#7a5a38');                 // 머리
     L(gx,gy+2,3,9,'#7a5a38');                  // 긴 옆머리
@@ -1059,6 +1074,7 @@ function drawAthlete(ax, ay, pose, opt){
       L(jx,jy,wd,cropH,st.base);
       L(jx+3,jy,wd-6,1,'#00000022');
       if(st.print==='xpod') glyphXPOD(jx+(wd>>1)-10, jy+5, st.letter);
+      else if(st.print==='cheese') printCheese(jx+(wd>>1)-6, jy+4);
       else glyphENUF(jx+(wd>>1)-8, jy+5, st.letter);
       L(jx,jy+cropH,wd,1,'#00000022');
       L(jx+2,jy+cropH+1,wd-4,ht-cropH-1,skin);   // 허리 노출
@@ -1075,6 +1091,7 @@ function drawAthlete(ax, ay, pose, opt){
       if(st.print==='xpod') glyphXPOD(jx+(wd>>1)-10, jy+7, st.letter);
       else if(st.print==='enuf') glyphENUF(jx+(wd>>1)-8, jy+7, st.letter);
       else if(st.print==='jesus') printJesus(jx+(wd>>1)-7, jy+5);
+      else if(st.print==='cheese') printCheese(jx+(wd>>1)-6, jy+6);
       L(jx,jy+ht-2,wd,2,'#00000018');           // 밑단
       return;
     }
