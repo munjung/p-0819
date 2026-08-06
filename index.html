@@ -95,12 +95,14 @@ const WARDROBE = {
       {name:'X-PODIUM 화이트',   style:'tee', base:'#f4f4f0', letter:'#2a6ad4', print:'xpod'},
       {name:'ENUF 카키 나그랑',  style:'tee', base:'#5a5c38', letter:'#1a1a1a', print:'enuf', raglan:'#1a1a1a'},
       {name:'JESUS 하늘색',      style:'tee', base:'#a8d4ec', letter:'#e8c22a', print:'jesus'},
+      {name:'ENUF 핑크',         style:'tee', base:'#f2a8bc', letter:'#d93a3a', print:'enuf'},
     ],
     bottom: [
       {name:'파랑 반바지',   c:'#2a6ad4', d:'#1e4fa8'},
       {name:'검정 반바지',   c:'#2a2a30', d:'#18181e'},
       {name:'연두 반바지',   c:'#8cc63e', d:'#6da32e'},
       {name:'네이비 반바지', c:'#1e2a52', d:'#141c3a'},
+      {name:'갈색 반바지',   c:'#8a6a4a', d:'#6a4e34'},
     ],
     socks: SOCKS_COMMON,
     shoes: [ {name:'메트콘9 블랙', style:'metcon'} ],
@@ -111,6 +113,7 @@ const WARDROBE = {
       {name:'ENUF 화이트 크롭 (레드)', style:'crop', base:'#f4f4f0', letter:'#d93a3a', print:'enuf'},
       {name:'X-PODIUM 블루 크롭', style:'crop', base:'#4a90d9', letter:'#f0f0f0', print:'xpod'},
       {name:'ENUF 카키 크롭',     style:'crop', base:'#7a7c4a', letter:'#e8c22a', print:'enuf'},
+      {name:'ENUF 핑크 크롭',     style:'crop', base:'#f2a8bc', letter:'#2e8c4a', print:'enuf'},
     ],
     bottom: [
       {name:'3부 레깅스 블랙', type:'leg', c:'#1e1e22', d:'#0e0e12'},
@@ -118,6 +121,7 @@ const WARDROBE = {
       {name:'갈색 반바지',  c:'#8a6a4a', d:'#6a4e34'},
       {name:'초록 반바지',  c:'#3a9a4a', d:'#2e7d3c'},
       {name:'검정 반바지',  c:'#2a2a30', d:'#18181e'},
+      {name:'파랑 반바지',  c:'#2a6ad4', d:'#1e4fa8'},
     ],
     socks: SOCKS_COMMON,
     shoes: [ {name:'리복 나노', style:'nano'} ],
@@ -318,9 +322,9 @@ function action(e){
       if(my>=200&&my<=216){ rename(); return; }   // 이름 변경
       if(my>=218&&my<=242){                       // 캐릭터/옷장 버튼
         const {mx} = canvasPos(e);
-        if(mx>=30&&mx<=86){ charSel='M'; }
-        else if(mx>=94&&mx<=150){ charSel='F'; }
-        else if(mx>=158&&mx<=240){ state='closet'; t=0; sfx.count(); return; }
+        if(mx>=66&&mx<=122){ charSel='M'; }
+        else if(mx>=130&&mx<=186){ charSel='F'; }
+        else if(mx>=214&&mx<=248){ state='closet'; t=0; sfx.count(); return; }
         else return;
         try{ localStorage.setItem('wodChar', charSel); }catch(_){}
         sfx.count();
@@ -1024,18 +1028,28 @@ function drawAthlete(ax, ay, pose, opt){
     L(gx+8,gy,1,5,G); L(gx+10,gy,1,5,G); L(gx+9,gy+4,1,1,G);                    // U
     L(gx+12,gy,1,5,G);L(gx+12,gy,3,1,G); L(gx+12,gy+2,2,1,G);                   // F
   }
-  function glyphXPOD(gx,gy,G){   // X + 대시 (X-PODIUM 축약)
-    L(gx,gy,1,1,G); L(gx+1,gy+1,1,1,G); L(gx+2,gy+2,1,1,G); L(gx+3,gy+3,1,1,G); L(gx+4,gy+4,1,1,G);
-    L(gx+4,gy,1,1,G); L(gx+3,gy+1,1,1,G); L(gx+1,gy+3,1,1,G); L(gx,gy+4,1,1,G);
-    L(gx+6,gy+2,3,1,G); L(gx+11,gy+2,3,1,G);
+  function glyphXPOD(gx,gy,G){   // 'X-POD' 3x5 픽셀 폰트
+    const F5 = {
+      'X':['101','101','010','101','101'],
+      '-':['000','000','111','000','000'],
+      'P':['111','101','111','100','100'],
+      'O':['111','101','101','101','111'],
+      'D':['110','101','101','101','110'],
+    };
+    'X-POD'.split('').forEach((ch,ci)=>{
+      F5[ch].forEach((row,ry)=>{
+        for(let cx2=0;cx2<3;cx2++) if(row[cx2]==='1') L(gx+ci*4+cx2, gy+ry, 1, 1, G);
+      });
+    });
   }
-  function printJesus(gx,gy){    // 예수님 얼굴 + JESUS
-    L(gx+2,gy,8,2,'#7a5a38');
-    L(gx+1,gy+1,2,6,'#7a5a38');  L(gx+9,gy+1,2,6,'#7a5a38');
-    L(gx+3,gy+2,6,5,'#e8c49a');
-    L(gx+4,gy+3,1,1,'#2a2a2a');  L(gx+7,gy+3,1,1,'#2a2a2a');
-    L(gx+4,gy+6,4,2,'#7a5a38');
-    for(let k=0;k<5;k++) L(gx-1+k*3,gy+10,2,1,'#e8c22a');
+  function printJesus(gx,gy){    // 예수님 얼굴 (크게)
+    L(gx+1,gy,12,3,'#7a5a38');                 // 머리
+    L(gx,gy+2,3,9,'#7a5a38');                  // 긴 옆머리
+    L(gx+11,gy+2,3,9,'#7a5a38');
+    L(gx+3,gy+3,8,8,'#e8c49a');                // 얼굴
+    L(gx+4,gy+5,2,2,'#2a2a2a');  L(gx+8,gy+5,2,2,'#2a2a2a');
+    L(gx+6,gy+8,2,1,'#c89a70');                // 코
+    L(gx+4,gy+10,6,3,'#7a5a38');               // 수염
   }
   function jerseyF(jx,jy,wd,ht){
     const st = O.top;
@@ -1044,7 +1058,7 @@ function drawAthlete(ax, ay, pose, opt){
       const cropH = Math.max(10, ht-6);
       L(jx,jy,wd,cropH,st.base);
       L(jx+3,jy,wd-6,1,'#00000022');
-      if(st.print==='xpod') glyphXPOD(jx+(wd>>1)-7, jy+5, st.letter);
+      if(st.print==='xpod') glyphXPOD(jx+(wd>>1)-10, jy+5, st.letter);
       else glyphENUF(jx+(wd>>1)-8, jy+5, st.letter);
       L(jx,jy+cropH,wd,1,'#00000022');
       L(jx+2,jy+cropH+1,wd-4,ht-cropH-1,skin);   // 허리 노출
@@ -1058,9 +1072,9 @@ function drawAthlete(ax, ay, pose, opt){
         L(jx,jy,5,10,st.raglan);
         L(jx+wd-5,jy,5,10,st.raglan);
       }
-      if(st.print==='xpod') glyphXPOD(jx+(wd>>1)-7, jy+7, st.letter);
+      if(st.print==='xpod') glyphXPOD(jx+(wd>>1)-10, jy+7, st.letter);
       else if(st.print==='enuf') glyphENUF(jx+(wd>>1)-8, jy+7, st.letter);
-      else if(st.print==='jesus') printJesus(jx+(wd>>1)-6, jy+4);
+      else if(st.print==='jesus') printJesus(jx+(wd>>1)-7, jy+5);
       L(jx,jy+ht-2,wd,2,'#00000018');           // 밑단
       return;
     }
@@ -1791,16 +1805,16 @@ function loop(){
     const bs = bestScore();
     if(bs>0) text('최고 기록 '+bs, W/2, 194, 11, '#ffd23f');
     text('선수: '+playerName+'  (탭해서 변경)', W/2, 210, 10, '#8be0d8');
-    // 캐릭터 선택 + 옷장 버튼
-    px(30,218,56,22, charSel==='M'?'#6e2438':'#221e30');
-    px(30,218,56,2,  charSel==='M'?'#ffd23f':'#4a4468');
-    text('♂ 남자', 58, 233, 10, charSel==='M'?'#ffd23f':'#7a7292');
-    px(94,218,56,22, charSel==='F'?'#6e2438':'#221e30');
-    px(94,218,56,2,  charSel==='F'?'#ffd23f':'#4a4468');
-    text('♀ 여자', 122, 233, 10, charSel==='F'?'#ffd23f':'#7a7292');
-    px(158,218,82,22,'#2a2340');
-    px(158,218,82,2,'#8be0d8');
-    text('👕 옷장', 199, 233, 10, '#8be0d8');
+    // 캐릭터 선택 (중앙) + 옷장 (우측 옵션)
+    px(66,218,56,22, charSel==='M'?'#6e2438':'#221e30');
+    px(66,218,56,2,  charSel==='M'?'#ffd23f':'#4a4468');
+    text('♂ 남자', 94, 233, 10, charSel==='M'?'#ffd23f':'#7a7292');
+    px(130,218,56,22, charSel==='F'?'#6e2438':'#221e30');
+    px(130,218,56,2,  charSel==='F'?'#ffd23f':'#4a4468');
+    text('♀ 여자', 158, 233, 10, charSel==='F'?'#ffd23f':'#7a7292');
+    px(214,218,34,22,'#2a2340');
+    px(214,218,34,2,'#8be0d8');
+    text('👕', 231, 233, 11, '#8be0d8');
     // 선수 말풍선
     const bob2 = Math.sin(t*0.06)*2;
     px(158,262+bob2,100,24,'#f6f6f2');
