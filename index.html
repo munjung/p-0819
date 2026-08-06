@@ -135,8 +135,8 @@ try{
   if(o && o.M && o.F) outfitSel = o;
 }catch(_){}
 function saveOutfit(){ try{ localStorage.setItem('wodOutfit', JSON.stringify(outfitSel)); }catch(_){} }
-function curOutfit(){
-  const w = WARDROBE[charSel], o = outfitSel[charSel];
+function curOutfitFor(g){
+  const w = WARDROBE[g], o = outfitSel[g];
   return {
     top:    w.top[o.top % w.top.length],
     bottom: w.bottom[o.bottom % w.bottom.length],
@@ -144,6 +144,7 @@ function curOutfit(){
     shoes:  w.shoes[o.shoes % w.shoes.length],
   };
 }
+function curOutfit(){ return curOutfitFor(charSel); }
 function topSleeveColor(){   // 월볼 1인칭 소매
   const o = curOutfit().top;
   return o.style==='real' ? '#f2803a' : (o.raglan || o.base);
@@ -348,6 +349,8 @@ function action(e){
       }
       // 📸 사진 공유
       if(mx>=132&&mx<=188&&my>=14&&my<=38){ doPhoto(); sfx.count(); return; }
+      // 👫 같이찍기 (남+여+치즈 랜덤 씬)
+      if(mx>=68&&mx<=124&&my>=14&&my<=38){ doDuo(); sfx.count(); return; }
       const i = Math.floor((my-252)/52);
       if(i>=0 && i<4 && (my-252)%52 <= 34){
         const k = ['top','bottom','socks','shoes'][i];
@@ -521,6 +524,90 @@ function buildPhotoCard(){
 }
 function doPhoto(){
   shareCanvas(buildPhotoCard(), 'wod-photo.png', playerName+' & 치즈 📸');
+}
+// 같이찍기: 남자+여자+치즈, 랜덤 3씬
+function buildDuoCard(){
+  const sc = document.createElement('canvas');
+  sc.width = 1080; sc.height = 1080;
+  const g = sc.getContext('2d'); g.imageSmoothingEnabled = false;
+  const old = x; x = g;
+  g.scale(4,4);   // 270x270 좌표계
+  // 배경
+  px(0,0,270,270,'#f7ead8');
+  const confCols = ['#ff9ec4','#8be0d8','#ffd23f','#a8d4ec','#d98b45'];
+  for(let i=0;i<40;i++){
+    const cx2 = (i*53+((i*29)%17))%262+4, cy2 = (i*37+((i*13)%23))%150+14;
+    px(cx2, cy2, i%4===0?3:2, i%3===0?3:2, confCols[i%5]+'aa');
+  }
+  px(0,225,270,45,'#2a2540');
+  px(0,225,270,3,'#3d3355');
+
+  const who = (gx,gy,gender,pose,scale2,opt2)=>{
+    x.save();
+    x.translate(gx,gy); x.scale(scale2,scale2); x.translate(-gx,-gy);
+    drawAthlete(gx, gy, pose, Object.assign({gender}, opt2||{}));
+    x.restore();
+  };
+  const cat = (gx,gy,mode,scale2)=>{
+    x.save();
+    x.translate(gx,gy); x.scale(scale2,scale2); x.translate(-gx,-gy);
+    drawCheese(gx, gy, mode);
+    x.restore();
+  };
+
+  const scene = Math.random()*3|0;
+  if(scene===0){
+    // 셋이 놀기: 포즈 제각각
+    const POSES = ['victory','ohstand','runp','du'];
+    const pick = ()=>POSES[Math.random()*POSES.length|0];
+    const optFor = pz => pz==='du' ? {jump:Math.random()*0.8, spin:t} : (pz==='runp' ? {f:Math.random()<0.5?1:0} : null);
+    const flip = Math.random()<0.5;
+    const p1 = pick(), p2 = pick();
+    who(flip?185:82, 225, 'M', p1, 2.2, optFor(p1));
+    who(flip?82:185, 225, 'F', p2, 2.2, optFor(p2));
+    cat(135, 225, ['sit','cheer','loaf'][Math.random()*3|0], 2.2);
+    text('★ '+playerName+' & 치즈 ★', 135, 40, 14, '#6e2438');
+  }
+  else if(scene===1){
+    // 생일 케이크: 남자가 촛불 불기, 여자·치즈 축하
+    px(158,202,74,23,'#fbf0e0');                 // 케이크 아랫단
+    px(158,210,74,3,'#f2a8bc');
+    px(170,186,50,17,'#fbf0e0');                 // 윗단
+    px(170,192,50,3,'#f2a8bc');
+    px(158,223,74,4,'#e8d8c0');                  // 접시
+    for(let k=0;k<3;k++){                        // 초 3개
+      const cx3 = 180+k*12;
+      px(cx3,174,3,12,['#ff9ec4','#8be0d8','#ffd23f'][k]);
+      if(k===0){                                 // 꺼진 초 (연기)
+        px(cx3,166,1,2,'#b8b5ac'); px(cx3+1,162,1,3,'#b8b5ac');
+      } else if(k===1){                          // 불려 기울어진 불꽃
+        px(cx3+3,170,3,3,'#ffd23f'); px(cx3+5,169,2,2,'#f2803a');
+      } else {                                   // 아직 타는 불꽃
+        px(cx3,169,3,4,'#ffd23f'); px(cx3+1,167,1,2,'#f2803a');
+      }
+    }
+    for(let k=0;k<3;k++) px(128+k*9, 158+((k*7)%6), 6, 2, '#8be0d8aa');   // 후- 바람
+    who(96, 225, 'M', 'runp', 2.2, {f:0});       // 몸 기울여 후 부는 남자
+    who(40, 225, 'F', 'victory', 2.2);
+    cat(135, 225, 'cheer', 2.0);
+    text('★ 생일 축하해! ★', 135, 40, 15, '#6e2438');
+  }
+  else {
+    // 탑 쌓기 (도안): 남자 ← 여자 ← 치즈
+    who(128, 244, 'M', 'setup', 2.0);
+    who(126, 162, 'F', 'setup', 2.0);
+    cat(138, 84, 'loaf', 2.0);
+    text('★ '+playerName+' 타워 ★', 135, 30, 13, '#6e2438');
+    px(190,120,2,2,'#ff9ec4'); px(194,120,2,2,'#ff9ec4');    // 하트
+    px(189,122,8,2,'#ff9ec4'); px(191,124,4,2,'#ff9ec4'); px(192,126,2,2,'#ff9ec4');
+  }
+
+  text(new Date().toISOString().slice(0,10)+' · CROSSFIT ARCADE', 135, 252, 8, '#a99cc4');
+  x = old;
+  return sc;
+}
+function doDuo(){
+  shareCanvas(buildDuoCard(), 'wod-duo.png', playerName+' & 치즈 👫');
 }
 // ---------- 종목별 터치 입력 (누름 / 뗌) ----------
 function pressAt(e){
@@ -864,10 +951,10 @@ function drawGym(){
 }
 
 // 치즈 (고양이): 평소엔 앉아서 꼬리 살랑, 가끔 식빵 굽기
-function drawCheese(cx,cy){
+function drawCheese(cx,cy,mode){
   const wht='#fbf6ee', org='#d98b45', orgL='#eda85f', eye='#b8cf7a';
 
-  if(state==='play' && combo>=5){      // 5콤보: 벌떡 일어나 환호
+  if(mode==='cheer' || (!mode && state==='play' && combo>=5)){   // 환호
     const hop = ((t>>3)&1) ? 3 : 0;
     px(cx-8,cy-8,4,3,org);             // 꼬리 파닥
     px(cx-4,cy-12-hop,10,12,wht);      // 몸통 세움
@@ -884,7 +971,7 @@ function drawCheese(cx,cy){
     return;
   }
 
-  const loaf = (t%900) >= 620;         // ~15초 주기로 약 4.5초 식빵
+  const loaf = mode ? mode==='loaf' : (t%900) >= 620;   // 모드 지정 시 고정
 
   if(loaf){
     // 식빵 자세: 낮고 둥근 몸통, 발 다 숨기고 눈 지그시
@@ -1019,8 +1106,9 @@ function drawRig(rx, barY){
 // pose: setup | pull | extend | overhead | ohstand | hang | kip | pullup | dip | support | du | stumble
 // 내부는 파인 좌표(코스 1px = 파인 2px), ctx.scale(0.5)로 기존 크기 유지
 function drawAthlete(ax, ay, pose, opt){
-  const isF = charSel==='F';
-  const O = curOutfit();
+  const gSel = (opt && opt.gender) || charSel;   // 같이찍기: 성별 지정 렌더
+  const isF = gSel==='F';
+  const O = curOutfitFor(gSel);
   const legTight = O.bottom.type==='leg';   // 3부 레깅스 단품
   const skin='#f2cba6', skinD='#dfb28c', hair='#3a2c22', hairD='#2c211a',
         top='#f2803a', topD='#1e2a52',
@@ -1901,6 +1989,8 @@ function loop(){
     text(charSel==='F'?'♂ 전환':'♀ 전환', 225, 31, 9, '#8be0d8');
     px(132,14,56,24,'#6e2438'); px(132,14,56,2,'#ff9ec4');
     text('📸 사진', 160, 31, 9, '#ff9ec4');
+    px(68,14,56,24,'#2e5c46'); px(68,14,56,2,'#8be0d8');
+    text('👫 같이', 96, 31, 9, '#8be0d8');
     // 미리보기 (크게)
     px(0,236,W,2,'#2a2540');
     x.save();
