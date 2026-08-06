@@ -307,15 +307,16 @@ function forceMiss(msg){   // 조작 실패 (깊이 부족, 스와이프 없음 
   if(roundMisses>=3 && mode!=='amrap'){ state='failed'; frame=0; coachMsg=null; }
   updateHUD();
 }
-function duTapLogic(){   // 더블언더: 존 안에서 빠른 2연타
+function duTapLogic(){   // 더블언더: 첫 탭은 존 안, 두 번째 탭은 빠르기만 하면 됨
   const p = frame/repDur;
-  if(p>=zone.gLo && p<=zone.gHi){
-    if(duTap1===null){ duTap1=p; duTapFrame=frame; beep(880,0.04,'square',0.08); }
-    else {
-      const inP = q => q>=zone.pLo && q<=zone.pHi;   // 두 탭 중 퍼펙트에 든 쪽으로 판정
-      judge(inP(p) && !inP(duTap1) ? p : duTap1);
-    }
-  } else judge(p);
+  if(duTap1!==null){
+    // 두 번째 탭: 위치 무관, 첫 탭 기준 판정 (퍼펙트에 든 쪽 우대)
+    const inP = q => q>=zone.pLo && q<=zone.pHi;
+    judge(inP(p) && !inP(duTap1) ? p : duTap1);
+    return;
+  }
+  if(p>=zone.gLo && p<=zone.gHi){ duTap1=p; duTapFrame=frame; beep(880,0.04,'square',0.08); }
+  else judge(p);
 }
 function runTap(side){
   if(side === lastSide) return;          // 같은 쪽 연타는 무효 (번갈아!)
@@ -1855,7 +1856,7 @@ function loop(){
           drawMeterV(p);   // 저크: 세로 게이지
           if((t>>3)&1) text('위로 스와이프!', W/2, 120, 10, '#2a2340');
         } else drawMeter(p);
-        if(curMove==='du' && duTap1!==null && frame-duTapFrame>14){ duTap1=null; forceMiss('한 번 더 쳐야지!'); }
+        if(curMove==='du' && duTap1!==null && frame-duTapFrame>18){ duTap1=null; forceMiss('한 번 더 쳐야지!'); }
         else if(p>=1) judge(1.1);
       }
     }
