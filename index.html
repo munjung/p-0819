@@ -384,8 +384,9 @@ function doShare(){
 // ---------- 종목별 터치 입력 (누름 / 뗌) ----------
 function pressAt(e){
   audioInit();
+  try{ c.setPointerCapture(e.pointerId); }catch(_){}
   const pos = canvasPos(e);
-  pressY = pos.my;
+  pressY = pos.my; lastMoveY = pos.my;
   if(state!=='play'){ action(e); return; }
   if(pos.mx<=44 && pos.my<=36){ action(e); return; }   // 뒤로가기
   if(curMove==='run'){
@@ -406,10 +407,13 @@ function pressAt(e){
   if(phase==='run') judge(frame/repDur);               // 머슬업: 탭
   else if(phase==='ready') judge(0);
 }
+let lastMoveY = 0;
 function releaseAt(e){
+  releaseCore(canvasPos(e).my);
+}
+function releaseCore(my){
   if(state!=='play') return;
-  const pos = canvasPos(e);
-  const swipeUp = (pressY - pos.my) > 20;
+  const swipeUp = (pressY - my) > 20;
   pendingHold=false;
   if(isHoldMove() && phase==='run' && holding){        // 릴리즈 판정
     holding=false;
@@ -472,8 +476,9 @@ addEventListener('keyup', e=>{
   if(e.code==='Space'||e.code==='ArrowUp') kbRelease();
 });
 c.addEventListener('pointerdown', e=>{ e.preventDefault(); pressAt(e); });
+c.addEventListener('pointermove', e=>{ if(state==='play') lastMoveY = canvasPos(e).my; });
 c.addEventListener('pointerup', e=>{ e.preventDefault(); releaseAt(e); });
-c.addEventListener('pointercancel', ()=>{ holding=false; pendingHold=false; });
+c.addEventListener('pointercancel', ()=>{ releaseCore(lastMoveY); });   // 엣지 제스처에 끊겨도 릴리즈 인정
 ['contextmenu','selectstart','dragstart'].forEach(ev=>document.addEventListener(ev, e=>e.preventDefault()));
 document.addEventListener('gesturestart', e=>e.preventDefault());
 
@@ -519,7 +524,9 @@ function setZone(){
   // 존 위치: random 라운드는 랩마다 이동 (타이밍 암기 방지)
   const zc = r.random ? 0.55 + Math.random()*0.3 : 0.845;
   const m  = wMode==='scaled' ? 1.3 : 1;     // 스케일드: 굿 존 30% 넓게
-  const pm = wMode==='scaled' ? 1.3 : 0.45;  // RX'D: 퍼펙트 존 55% 축소
+  let pm = wMode==='scaled' ? 1.3 : 0.45;    // RX'D: 퍼펙트 존 55% 축소
+  const holdRep = curMove==='snatch' || (curMove==='cj' && cjStage===0);
+  if(holdRep) pm *= 0.6;                     // 홀드 종목: 골드 존 40% 추가 축소
   zone = { pLo:zc-r.pw*pm, pHi:zc+r.pw*pm, gLo:zc-r.gw*m, gHi:zc+r.gw*m };
 }
 function startRep(){
@@ -1824,7 +1831,7 @@ function loop(){
       } else if(isHoldMove()){
         // 홀드&릴리즈: 누르는 동안만 게이지 진행, 놓는 지점 판정
         if(pendingHold && !holding){ holding=true; pendingHold=false; }
-        if(holding) gaugeF += 0.55 + 1.35*(gaugeF/repDur);   // 당길수록 가속 (세컨드 풀)
+        if(holding) gaugeF += 0.45 + 2.4*(gaugeF/repDur);    // 당길수록 가속 (존 근처 ~2.5배)
         const p = gaugeF/repDur;
         drawMeter(p);
         if(holding && p>=1.15){ holding=false; judge(1.2); }         // 너무 오래 당김
