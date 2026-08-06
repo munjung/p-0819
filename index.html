@@ -1529,6 +1529,16 @@ function drawMeter(p){
   px(mx-2, my-2, mw+4, mh+4, '#2a2540');
   px(mx, my, mw, mh, '#14121c');
   const xOf = q => mx + Math.max(0,Math.min(1,q))*mw;
+  // 홀드 충전: 에너지가 두두두 차오름
+  if(holding && (isHoldMove()||curMove==='wb')){
+    const fw = Math.max(0, Math.min(1.15,p))*mw;
+    px(mx, my, fw, mh, '#d96a28');
+    for(let k=0;k<fw;k+=8){                       // 펄스 줄무늬
+      if(((k>>3)+(t>>1))%3!==0) px(mx+k, my+2, 5, mh-4, '#f2a03a');
+    }
+    px(mx+fw-3, my-3, 4, mh+6, '#ffd23f');        // 차오르는 끝 발광
+    if((t&3)===0) particles.push({x:mx+fw, y:my, vx:(Math.random()-.5)*1.5, vy:-1-Math.random()*1.5, life:14, col:'#ffd23f'});
+  }
   const hidden = repEvent==='blind' && p>0.45;   // 블라인드: 중반부터 존 숨김
   if(!hidden){
     px(xOf(zone.gLo), my, (zone.gHi-zone.gLo)*mw, mh, '#2e6e5a');
@@ -1540,6 +1550,34 @@ function drawMeter(p){
   px(markX-2, my-5, 4, mh+10, '#ffffff');
   px(markX-2, my-5, 1, mh+10, '#8be0d8');
   text('TIMING', 135, my-10, 8, '#7a7292');
+}
+// 저크 전용: 세로 게이지 (아래→위, 스와이프 유도)
+function drawMeterV(p){
+  const mx = 232, my = 150, mw2 = 16, mh = 240;
+  px(mx-2, my-2, mw2+4, mh+4, '#2a2540');
+  px(mx, my, mw2, mh, '#14121c');
+  const yOf = q => my + mh - Math.max(0,Math.min(1,q))*mh;
+  const hidden = repEvent==='blind' && p>0.45;
+  if(!hidden){
+    px(mx, yOf(zone.gHi), mw2, (zone.gHi-zone.gLo)*mh, '#2e6e5a');
+    px(mx, yOf(zone.pHi), mw2, (zone.pHi-zone.pLo)*mh, '#ffd23f');
+  } else {
+    text('?', mx+8, my+mh/2, 12, '#8be0d8');
+  }
+  px(mx+1, yOf(p), mw2-2, mh+my-yOf(p), '#d96a2855');   // 차오른 부분
+  const markY = yOf(p);
+  px(mx-4, markY-2, mw2+8, 4, '#ffffff');
+  px(mx-4, markY-2, mw2+8, 1, '#8be0d8');
+  // 위로 솟는 셰브론 화살표
+  for(let k=0;k<3;k++){
+    const yy = my + mh - ((t*2.2 + k*80) % mh);
+    x.fillStyle = 'rgba(139,224,216,'+(0.35+0.3*Math.sin(t*0.2+k))+')';
+    x.beginPath();
+    x.moveTo(mx-16, yy+8); x.lineTo(mx-9, yy); x.lineTo(mx-2, yy+8);
+    x.lineTo(mx-2, yy+12); x.lineTo(mx-9, yy+4); x.lineTo(mx-16, yy+12);
+    x.fill();
+  }
+  text('↑', mx+8, my-8, 12, '#8be0d8');
 }
 
 // ---------- 크로스핏 LED 타이머 (상단 중앙, 배너 위) ----------
@@ -1786,7 +1824,7 @@ function loop(){
       } else if(isHoldMove()){
         // 홀드&릴리즈: 누르는 동안만 게이지 진행, 놓는 지점 판정
         if(pendingHold && !holding){ holding=true; pendingHold=false; }
-        if(holding) gaugeF++;
+        if(holding) gaugeF += 0.55 + 1.35*(gaugeF/repDur);   // 당길수록 가속 (세컨드 풀)
         const p = gaugeF/repDur;
         drawMeter(p);
         if(holding && p>=1.15){ holding=false; judge(1.2); }         // 너무 오래 당김
@@ -1802,8 +1840,10 @@ function loop(){
         else if(frame>repDur*3+90) forceMiss('공 던져야지!');
       } else {
         const p = frame/repDur;
-        drawMeter(p);
-        if(curMove==='cj' && cjStage===1 && (t>>3)&1) text('위로 스와이프!', W/2, 120, 10, '#2a2340');
+        if(curMove==='cj' && cjStage===1){
+          drawMeterV(p);   // 저크: 세로 게이지
+          if((t>>3)&1) text('위로 스와이프!', W/2, 120, 10, '#2a2340');
+        } else drawMeter(p);
         if(curMove==='du' && duTap1!==null && frame-duTapFrame>14){ duTap1=null; forceMiss('한 번 더 쳐야지!'); }
         else if(p>=1) judge(1.1);
       }
