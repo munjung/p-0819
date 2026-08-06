@@ -557,39 +557,48 @@ function buildDuoCard(){
 
   const scene = Math.random()*3|0;
   if(scene===0){
-    // 셋이 놀기: 포즈 제각각
-    const POSES = ['victory','ohstand','runp','du'];
-    const pick = ()=>POSES[Math.random()*POSES.length|0];
-    const optFor = pz => pz==='du' ? {jump:Math.random()*0.8, spin:t} : (pz==='runp' ? {f:Math.random()<0.5?1:0} : null);
+    // 셋이 놀기: 포즈 제각각 (중복 없이), 위치·점프까지 랜덤
+    const POSES = ['victory','ohstand','runp','du','jerk','lying'];
+    const optFor = pz => pz==='du' ? {jump:0.3+Math.random()*0.7, spin:(Math.random()*99)|0}
+      : (pz==='runp' ? {f:Math.random()<0.5?1:0} : null);
+    const p1 = POSES[Math.random()*POSES.length|0];
+    let p2 = p1;
+    while(p2===p1) p2 = POSES[Math.random()*POSES.length|0];
     const flip = Math.random()<0.5;
-    const p1 = pick(), p2 = pick();
-    who(flip?185:82, 225, 'M', p1, 2.2, optFor(p1));
-    who(flip?82:185, 225, 'F', p2, 2.2, optFor(p2));
-    cat(135, 225, ['sit','cheer','loaf'][Math.random()*3|0], 2.2);
+    const x1 = 70+(Math.random()*24|0), x2 = 176+(Math.random()*24|0);
+    who(flip?x2:x1, 225, 'M', p1, 2.0+Math.random()*0.4, optFor(p1));
+    who(flip?x1:x2, 225, 'F', p2, 2.0+Math.random()*0.4, optFor(p2));
+    const catX = [40, 135, 232][Math.random()*3|0];
+    cat(catX, 225, ['sit','cheer','loaf'][Math.random()*3|0], 2.0+Math.random()*0.4);
     text('★ '+playerName+' & 치즈 ★', 135, 40, 14, '#6e2438');
   }
   else if(scene===1){
-    // 생일 케이크: 남자가 촛불 불기, 여자·치즈 축하
-    px(158,202,74,23,'#fbf0e0');                 // 케이크 아랫단
-    px(158,210,74,3,'#f2a8bc');
-    px(170,186,50,17,'#fbf0e0');                 // 윗단
-    px(170,192,50,3,'#f2a8bc');
-    px(158,223,74,4,'#e8d8c0');                  // 접시
-    for(let k=0;k<3;k++){                        // 초 3개
-      const cx3 = 180+k*12;
-      px(cx3,174,3,12,['#ff9ec4','#8be0d8','#ffd23f'][k]);
-      if(k===0){                                 // 꺼진 초 (연기)
-        px(cx3,166,1,2,'#b8b5ac'); px(cx3+1,162,1,3,'#b8b5ac');
-      } else if(k===1){                          // 불려 기울어진 불꽃
-        px(cx3+3,170,3,3,'#ffd23f'); px(cx3+5,169,2,2,'#f2803a');
-      } else {                                   // 아직 타는 불꽃
-        px(cx3,169,3,4,'#ffd23f'); px(cx3+1,167,1,2,'#f2803a');
+    // 생일 케이크: 대형 케이크 뒤에서 남녀가 빼꼼, 남자가 후~
+    who(112, 240, 'M', 'ohstand', 2.2);          // 케이크 뒤 (하체는 케이크에 가려짐)
+    who(165, 242, 'F', 'victory', 2.1);
+    // 대형 케이크 (앞에 그려서 상체만 보이게)
+    px(70,224,130,6,'#e8d8c0');                  // 접시
+    px(76,192,118,34,'#fbf0e0');                 // 아랫단
+    px(76,202,118,4,'#f2a8bc');
+    px(76,212,118,3,'#f2a8bc');
+    for(let k=0;k<6;k++) px(82+k*19,194,5,4,'#d93a3a');   // 딸기
+    px(94,164,82,30,'#fbf0e0');                  // 윗단
+    px(94,172,82,4,'#f2a8bc');
+    px(94,164,82,3,'#fff6ea');                   // 크림 라인
+    for(let k=0;k<5;k++){                        // 초 5개
+      const cx3 = 102+k*15;
+      px(cx3,150,3,14,['#ff9ec4','#8be0d8','#ffd23f','#a8d4ec','#8cc63e'][k]);
+      if(k<2){                                   // 이미 꺼짐 (연기)
+        px(cx3+1,142,1,3,'#b8b5ac'); px(cx3,138,1,3,'#b8b5ac');
+      } else if(k===2){                          // 불려서 기울어짐
+        px(cx3+4,145,3,3,'#ffd23f'); px(cx3+6,144,2,2,'#f2803a');
+      } else {                                   // 아직 타는 중
+        px(cx3,144,3,5,'#ffd23f'); px(cx3+1,142,1,2,'#f2803a');
       }
     }
-    for(let k=0;k<3;k++) px(128+k*9, 158+((k*7)%6), 6, 2, '#8be0d8aa');   // 후- 바람
-    who(96, 225, 'M', 'runp', 2.2, {f:0});       // 몸 기울여 후 부는 남자
-    who(40, 225, 'F', 'victory', 2.2);
-    cat(135, 225, 'cheer', 2.0);
+    // 남자 얼굴에서 후- 바람
+    for(let k=0;k<4;k++) px(118+k*7, 136+((k*5)%8), 5, 2, '#8be0d8bb');
+    cat(224, 225, 'cheer', 2.0);                 // 치즈 옆에서 환호
     text('★ 생일 축하해! ★', 135, 40, 15, '#6e2438');
   }
   else {
