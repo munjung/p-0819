@@ -265,6 +265,7 @@ function action(e){
     else launchWOD();          // 키보드 SPACE
     return;
   }
+  if(state==='collapse'){ finishWOD(); return; }   // 탭하면 스킵
   if(state==='done'){
     if(e){
       const {mx,my} = canvasPos(e);
@@ -469,6 +470,10 @@ function judge(p){
   }
   updateHUD();
 }
+function startCollapse(){   // 완주/타임캡 직후 크로스핏 국룰: 대자로 뻗기
+  state='collapse'; frame=0; coachMsg=null;
+  beep(988,0.25,'square',0.1);
+}
 function finishWOD(){
   state='done'; t=0; sfx.clear();
   // FOR TIME: WOD 구성별 최단 시간 기록 (TIME 자체가 기록)
@@ -500,7 +505,7 @@ function nextRep(){
       return;
     }
     roundIdx++;
-    if(roundIdx >= WOD.length){ finishWOD(); return; }
+    if(roundIdx >= WOD.length){ startCollapse(); return; }
     state='intro'; frame=0;
     updateHUD();
   } else { startRep(); updateHUD(); }
@@ -601,6 +606,24 @@ function drawGym(){
 // 치즈 (고양이): 평소엔 앉아서 꼬리 살랑, 가끔 식빵 굽기
 function drawCheese(cx,cy){
   const wht='#fbf6ee', org='#d98b45', orgL='#eda85f', eye='#b8cf7a';
+
+  if(state==='play' && combo>=5){      // 5콤보: 벌떡 일어나 환호
+    const hop = ((t>>3)&1) ? 3 : 0;
+    px(cx-8,cy-8,4,3,org);             // 꼬리 파닥
+    px(cx-4,cy-12-hop,10,12,wht);      // 몸통 세움
+    px(cx-3,cy-11-hop,5,4,org);
+    px(cx-2,cy-19-hop,10,8,wht);       // 머리
+    px(cx+3,cy-19-hop,5,4,org);
+    px(cx-2,cy-21-hop,3,3,org);        // 귀
+    px(cx+5,cy-21-hop,3,3,org);
+    px(cx,cy-16-hop,2,2,'#2a2a2a');    // 눈
+    px(cx+4,cy-16-hop,2,2,'#2a2a2a');
+    px(cx+2,cy-13-hop,3,2,'#1a1a1a');  // 입 쫙 (냐옹!)
+    px(cx-8,cy-18-hop,4,4,wht);        // 앞발 번쩍
+    px(cx+9,cy-18-hop,4,4,wht);
+    return;
+  }
+
   const loaf = (t%900) >= 620;         // ~15초 주기로 약 4.5초 식빵
 
   if(loaf){
@@ -975,6 +998,18 @@ function drawAthlete(ax, ay, pose, opt){
     L(26,14,8,12,shin);
     L(30,4,8,10,sock);
     footF(32,-6,12);                         // 발끝이 바 높이까지
+  }
+  else if(pose==='lying'){
+    // 탈진: 대자로 뻗음 (정면 뷰, 가슴 들썩)
+    const br2 = ((t>>4)&1) ? 2 : 0;
+    headF(0,-64);
+    jerseyF(-2,-46+br2,24,22);
+    L(-14,-44,10,8,skin);  L(-22,-36,10,8,skin);   // 팔 대각으로 벌림
+    L(24,-44,10,8,skin);   L(32,-36,10,8,skin);
+    L(-6,-24,10,8,shorts); L(16,-24,10,8,shorts);  // 다리 벌림
+    L(-12,-16,8,8,shin);   L(24,-16,8,8,shin);
+    L(-16,-8,8,8,sock);    L(28,-8,8,8,sock);
+    footF(-20,0,14);       footF(30,0,14);
   }
   else if(pose==='victory'){
     // 기념샷: 한 손 브이 ✌
@@ -1525,6 +1560,22 @@ function loop(){
       +(canGo?' · '+buildSel.length+'라운드':''), W/2, 410, 9, '#8be0d8');
   }
 
+  else if(state==='collapse'){
+    frame++;
+    drawGym();
+    // 대자로 뻗은 선수 (아래 매트)
+    x.save();
+    x.translate(135,428); x.scale(1.5,1.5); x.translate(-135,-428);
+    drawAthlete(135,428,'lying');
+    x.restore();
+    // 땀방울
+    if((t>>3)&1){ px(96,364,3,4,'#8be0d8'); px(176,372,3,4,'#8be0d8'); }
+    text('WOD 종료!', W/2+1, 285, 16, '#00000077');
+    text('WOD 종료!', W/2, 284, 16, '#ffd23f');
+    if((t>>4)&1) text('후우... 후우...', W/2, 308, 12, '#8be0d8');
+    if(frame>=150) finishWOD();
+  }
+
   else if(state==='failed'){
     frame++;
     drawGym();
@@ -1562,11 +1613,11 @@ function loop(){
     // 타이머: FOR TIME은 카운트업, AMRAP은 카운트다운
     if(mode==='amrap'){
       amrapLeft--;
-      if(amrapLeft<=0){ finishWOD(); }
+      if(amrapLeft<=0){ startCollapse(); }
       else drawTimer('DN', Math.ceil(amrapLeft/60));
     } else {
       wodTime++;
-      if(wodTime>=timeCap){ timeCapped=true; finishWOD(); }
+      if(wodTime>=timeCap){ timeCapped=true; startCollapse(); }
       else {
         drawTimer('UP', wodTime/60|0);
         const remain = (timeCap-wodTime)/60|0;
@@ -1645,6 +1696,13 @@ function loop(){
     if(combo>=2){
       text(combo+' COMBO', W/2+1, 63, 13, '#00000066');
       text(combo+' COMBO', W/2, 62, 13, combo>=5?'#ffd23f':'#8be0d8');
+    }
+    if(combo>=5){
+      // 하이프: 골드 엣지 글로우 + RX'D PACE
+      x.fillStyle = 'rgba(255,210,63,'+(0.08+0.05*Math.sin(t*0.25))+')';
+      x.fillRect(0,44,W,4); x.fillRect(0,H-4,W,4);
+      x.fillRect(0,44,4,H-44); x.fillRect(W-4,44,4,H-44);
+      if((t>>3)&1) text("RX'D PACE!", W/2, 77, 10, '#ffd23f');
     }
 
     // 코치 말풍선 (랜덤 좌/우)
