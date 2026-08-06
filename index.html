@@ -346,6 +346,8 @@ function action(e){
         try{ localStorage.setItem('wodChar', charSel); }catch(_){}
         sfx.count(); return;
       }
+      // 📸 사진 공유
+      if(mx>=132&&mx<=188&&my>=14&&my<=38){ doPhoto(); sfx.count(); return; }
       const i = Math.floor((my-252)/52);
       if(i>=0 && i<4 && (my-252)%52 <= 34){
         const k = ['top','bottom','socks','shoes'][i];
@@ -458,20 +460,67 @@ function buildShareCard(){
   x = old;
   return sc;
 }
-function doShare(){
-  const sc = buildShareCard();
+function shareCanvas(sc, fname, msg){
   sc.toBlob(async b=>{
     if(!b) return;
     try{
-      const f = new File([b], 'birthday-wod.png', {type:'image/png'});
+      const f = new File([b], fname, {type:'image/png'});
       if(navigator.canShare && navigator.canShare({files:[f]})){
-        await navigator.share({files:[f], title:'BIRTHDAY WOD', text:playerName+' — SCORE '+score});
+        await navigator.share({files:[f], title:'BIRTHDAY WOD', text:msg});
       } else {
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(b); a.download = 'birthday-wod.png'; a.click();
+        a.href = URL.createObjectURL(b); a.download = fname; a.click();
       }
     }catch(_){}
   });
+}
+function doShare(){
+  shareCanvas(buildShareCard(), 'birthday-wod.png', playerName+' — SCORE '+score);
+}
+// 인스타용 포토 카드 (1080x1080): 브이 포즈 + 치즈
+function buildPhotoCard(){
+  const sc = document.createElement('canvas');
+  sc.width = 1080; sc.height = 1080;
+  const g = sc.getContext('2d'); g.imageSmoothingEnabled = false;
+  const old = x; x = g;
+  g.scale(4,4);   // 270x270 좌표계
+  // 파스텔 배경 + 콘페티
+  px(0,0,270,270,'#f7ead8');
+  const confCols = ['#ff9ec4','#8be0d8','#ffd23f','#a8d4ec','#d98b45'];
+  for(let i=0;i<40;i++){
+    const cx2 = (i*53+((i*29)%17))%262+4, cy2 = (i*37+((i*13)%23))%180+16;
+    px(cx2, cy2, i%4===0?3:2, i%3===0?3:2, confCols[i%5]+'aa');
+  }
+  // 하트
+  for(let i=0;i<4;i++){
+    const hx = 28+i*70, hy = 78+((i*31)%40);
+    x.fillStyle = '#ff9ec488';
+    x.fillRect(hx,hy,2,2); x.fillRect(hx+4,hy,2,2);
+    x.fillRect(hx-1,hy+2,8,2); x.fillRect(hx+1,hy+4,4,2); x.fillRect(hx+2,hy+6,2,2);
+  }
+  // 타이틀
+  text('★ '+playerName+' & 치즈 ★', 135, 40, 15, '#6e2438');
+  text('BIRTHDAY WOD', 135, 58, 9, '#c9922a');
+  // 매트 (바닥)
+  px(0,225,270,45,'#2a2540');
+  px(0,225,270,3,'#3d3355');
+  // 캐릭터 (현재 코디, 브이)
+  x.save();
+  x.translate(102,225); x.scale(2.6,2.6); x.translate(-102,-225);
+  drawAthlete(102, 225, 'victory');
+  x.restore();
+  // 치즈 (옆에)
+  x.save();
+  x.translate(178,225); x.scale(2.6,2.6); x.translate(-178,-225);
+  drawCheese(178, 225);
+  x.restore();
+  text('냐아아앙--', 214, 130, 9, '#8a6a4a');
+  text(new Date().toISOString().slice(0,10)+' · CROSSFIT ARCADE', 135, 252, 8, '#a99cc4');
+  x = old;
+  return sc;
+}
+function doPhoto(){
+  shareCanvas(buildPhotoCard(), 'wod-photo.png', playerName+' & 치즈 📸');
 }
 // ---------- 종목별 터치 입력 (누름 / 뗌) ----------
 function pressAt(e){
@@ -1847,9 +1896,11 @@ function loop(){
     for(let i=0;i<5;i++) px(i*54,0,1,H,'#1c1928');
     text('옷장', W/2, 30, 16, '#ffd23f');
     text(charSel==='F'?'여자 캐릭터':'남자 캐릭터', W/2, 48, 9, '#8be0d8');
-    // 성별 전환 버튼 (우상단)
+    // 성별 전환 + 사진 버튼 (우상단)
     px(196,14,58,24,'#2a2340'); px(196,14,58,2,'#4a4468');
     text(charSel==='F'?'♂ 전환':'♀ 전환', 225, 31, 9, '#8be0d8');
+    px(132,14,56,24,'#6e2438'); px(132,14,56,2,'#ff9ec4');
+    text('📸 사진', 160, 31, 9, '#ff9ec4');
     // 미리보기 (크게)
     px(0,236,W,2,'#2a2540');
     x.save();
