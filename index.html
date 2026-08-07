@@ -310,10 +310,10 @@ function buildTap(e){
 function action(e){
   audioInit();
   // 좌상단 뒤로가기: 빌더→타이틀, 게임 중→빌더 (WOD 중단)
-  if(e && (state==='build'||state==='closet'||state==='play'||state==='intro'||state==='failed')){
+  if(e && (state==='build'||state==='closet'||state==='photoview'||state==='play'||state==='intro'||state==='failed')){
     const {mx,my} = canvasPos(e);
     if(mx<=44 && my<=36){
-      state = (state==='build'||state==='closet') ? 'title' : 'build';
+      state = (state==='photoview') ? 'closet' : (state==='build'||state==='closet') ? 'title' : 'build';
       t=0; coachMsg=null;
       updateHUD(); sfx.count();
       return;
@@ -335,6 +335,17 @@ function action(e){
       }
     }
     state='build'; t=0;
+    return;
+  }
+  if(state==='photoview'){
+    if(e){
+      const {mx,my} = canvasPos(e);
+      if(mx<=44 && my<=36){ state='closet'; t=0; sfx.count(); return; }        // 뒤로
+      if(my>=330&&my<=364){
+        if(mx>=22&&mx<=112){ retakePhoto(); sfx.count(); return; }             // 다시 찍기
+        if(mx>=126&&mx<=248){ sharePhoto(); sfx.count(); return; }             // 공유
+      }
+    }
     return;
   }
   if(state==='closet'){
@@ -522,8 +533,10 @@ function buildPhotoCard(){
   x = old;
   return sc;
 }
+let photoCard = null, photoKind = 'solo';
 function doPhoto(){
-  shareCanvas(buildPhotoCard(), 'wod-photo.png', playerName+' & 치즈 📸');
+  photoKind='solo'; photoCard = buildPhotoCard();
+  state='photoview'; t=0;
 }
 // 같이찍기: 남자+여자+치즈, 랜덤 3씬
 function buildDuoCard(){
@@ -616,7 +629,15 @@ function buildDuoCard(){
   return sc;
 }
 function doDuo(){
-  shareCanvas(buildDuoCard(), 'wod-duo.png', playerName+' & 치즈 👫');
+  photoKind='duo'; photoCard = buildDuoCard();
+  state='photoview'; t=0;
+}
+function retakePhoto(){
+  photoCard = photoKind==='duo' ? buildDuoCard() : buildPhotoCard();
+}
+function sharePhoto(){
+  if(!photoCard) return;
+  shareCanvas(photoCard, 'wod-'+photoKind+'-'+Date.now()+'.png', playerName+' & 치즈 📸');
 }
 // ---------- 종목별 터치 입력 (누름 / 뗌) ----------
 function pressAt(e){
@@ -1988,6 +2009,21 @@ function loop(){
     text('할 수 이떠~~!', 208, 278+bob2, 10, '#1e2a52');
   }
 
+  else if(state==='photoview'){
+    px(0,0,W,H,'#14121c');
+    text('찰칵! 📸', W/2, 34, 14, '#ffd23f');
+    if(photoCard){
+      px(11,48,248,248,'#3d3355');
+      x.drawImage(photoCard, 13, 50, 244, 244);
+    }
+    // 버튼: 다시 찍기 / 공유
+    px(22,330,90,34,'#2a2340'); px(22,330,90,3,'#8be0d8');
+    text('🔄 다시 찍기', 67, 352, 10, '#8be0d8');
+    px(126,330,122,34,'#2a6ad4'); px(126,330,122,3,'#6a94e8');
+    text('공유하기', 187, 352, 11, '#f0f0f0');
+    text('마음에 들 때까지 다시 찍어봐!', W/2, 390, 9, '#7a7292');
+  }
+
   else if(state==='closet'){
     px(0,0,W,H,'#14121c');
     for(let i=0;i<5;i++) px(i*54,0,1,H,'#1c1928');
@@ -2336,7 +2372,7 @@ function loop(){
   }
 
   // 뒤로가기 버튼 (빌더/게임 중)
-  if(state==='build'||state==='closet'||state==='play'||state==='intro'||state==='failed'){
+  if(state==='build'||state==='closet'||state==='photoview'||state==='play'||state==='intro'||state==='failed'){
     px(8,8,34,26,'#2a2340');
     px(8,8,34,2,'#4a4468'); px(8,32,34,2,'#4a4468');
     px(8,8,2,26,'#4a4468'); px(40,8,2,26,'#4a4468');
